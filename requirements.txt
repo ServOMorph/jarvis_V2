@@ -1,0 +1,19 @@
+# JARVIS V2 - Dépendances Python
+
+# Gestion de la manette
+pygame>=2.5.0
+
+# Reconnaissance vocale
+SpeechRecognition>=3.10.0
+
+# Enregistrement audio
+pyaudio>=0.2.13
+
+# Gestion du presse-papier
+pyperclip>=1.8.2
+
+# Contrôle de la souris et du clavier
+pyautogui>=0.9.54
+
+# Optionnel : Whisper pour meilleure reconnaissance (plus lourd)
+# openai-whisper>=20230918
