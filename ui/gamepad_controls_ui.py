@@ -8,6 +8,287 @@ import pygame
 import json
 from pathlib import Path
 from typing import Dict, Optional
+import sys
+import os
+
+# Ajouter le dossier parent au path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config import MouseConfig, ScrollConfig
+
+
+class MouseConfigWindow:
+    """Fenêtre de configuration des paramètres de la souris"""
+
+    def __init__(self, parent, controller):
+        """
+        Initialise la fenêtre de configuration
+
+        Args:
+            parent: Fenêtre parent
+            controller: Référence au contrôleur pour modifier les paramètres en temps réel
+        """
+        self.controller = controller
+        self.window = tk.Toplevel(parent)
+        self.window.title("⚙️ Configuration de la Souris")
+        self.window.geometry("600x700")
+        self.window.configure(bg='#1a1a2e')
+        self.window.resizable(False, False)
+
+        # Variables pour les sliders
+        self.vars = {}
+
+        self._create_ui()
+
+    def _create_ui(self):
+        """Crée l'interface de configuration"""
+
+        # En-tête
+        header = tk.Label(
+            self.window,
+            text="⚙️ CONFIGURATION DE LA SOURIS",
+            font=('Segoe UI', 20, 'bold'),
+            bg='#1a1a2e',
+            fg='#eaeaea'
+        )
+        header.pack(pady=(20, 10))
+
+        subtitle = tk.Label(
+            self.window,
+            text="Ajustez les paramètres en temps réel",
+            font=('Segoe UI', 11),
+            bg='#1a1a2e',
+            fg='#a0a0a0'
+        )
+        subtitle.pack(pady=(0, 20))
+
+        # Frame principal avec scroll
+        main_frame = tk.Frame(self.window, bg='#1a1a2e')
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20)
+
+        # Sensibilité
+        self._create_slider(
+            main_frame,
+            "Sensibilité de base",
+            "Vitesse du curseur (mouvements légers)",
+            MouseConfig.SENSITIVITY,
+            5.0, 100.0,
+            lambda v: self._update_config('SENSITIVITY', v)
+        )
+
+        # Sensibilité maximale
+        self._create_slider(
+            main_frame,
+            "Sensibilité maximale",
+            "Vitesse maximale (joystick à fond)",
+            MouseConfig.MAX_SENSITIVITY,
+            10.0, 150.0,
+            lambda v: self._update_config('MAX_SENSITIVITY', v)
+        )
+
+        # Courbe d'accélération
+        self._create_slider(
+            main_frame,
+            "Accélération",
+            "1.0 = Linéaire, >2.0 = Accélération progressive",
+            MouseConfig.ACCELERATION_CURVE,
+            1.0, 4.0,
+            lambda v: self._update_config('ACCELERATION_CURVE', v),
+            resolution=0.1
+        )
+
+        # Lissage
+        self._create_slider(
+            main_frame,
+            "Lissage",
+            "0.0 = Aucun, 1.0 = Maximum (réduit les saccades)",
+            MouseConfig.SMOOTHING,
+            0.0, 0.9,
+            lambda v: self._update_config('SMOOTHING', v),
+            resolution=0.05
+        )
+
+        # Diviseur de précision
+        self._create_slider(
+            main_frame,
+            "Mode Précision (Bouton RB/R1)",
+            "Diviseur de vitesse (plus élevé = plus lent)",
+            MouseConfig.PRECISION_DIVIDER,
+            1.5, 10.0,
+            lambda v: self._update_config('PRECISION_DIVIDER', v),
+            resolution=0.5
+        )
+
+        # Zone morte
+        self._create_slider(
+            main_frame,
+            "Zone morte du joystick",
+            "Seuil avant mouvement (évite le drift)",
+            MouseConfig.DEADZONE,
+            0.0, 0.4,
+            lambda v: self._update_config('DEADZONE', v),
+            resolution=0.01
+        )
+
+        # Boutons de préréglages
+        presets_frame = tk.Frame(self.window, bg='#1a1a2e')
+        presets_frame.pack(pady=20)
+
+        tk.Label(
+            presets_frame,
+            text="PRÉRÉGLAGES",
+            font=('Segoe UI', 12, 'bold'),
+            bg='#1a1a2e',
+            fg='#eaeaea'
+        ).pack(pady=(0, 10))
+
+        buttons_frame = tk.Frame(presets_frame, bg='#1a1a2e')
+        buttons_frame.pack()
+
+        self._create_preset_button(buttons_frame, "🎮 Jeu", self._preset_gaming).pack(side=tk.LEFT, padx=5)
+        self._create_preset_button(buttons_frame, "💼 Bureautique", self._preset_office).pack(side=tk.LEFT, padx=5)
+        self._create_preset_button(buttons_frame, "🎯 Précis", self._preset_precision).pack(side=tk.LEFT, padx=5)
+
+        # Bouton fermer
+        close_btn = tk.Button(
+            self.window,
+            text="Fermer",
+            font=('Segoe UI', 11, 'bold'),
+            bg='#e94560',
+            fg='white',
+            activebackground='#c93550',
+            activeforeground='white',
+            relief=tk.FLAT,
+            padx=30,
+            pady=10,
+            command=self.window.destroy
+        )
+        close_btn.pack(pady=(10, 20))
+
+    def _create_slider(self, parent, title, description, default_value, from_, to_, command, resolution=1.0):
+        """Crée un slider avec son label"""
+
+        frame = tk.Frame(parent, bg='#16213e', highlightbackground='#0f3460', highlightthickness=2)
+        frame.pack(fill=tk.X, pady=8, padx=10)
+
+        inner = tk.Frame(frame, bg='#16213e')
+        inner.pack(fill=tk.BOTH, expand=True, padx=15, pady=12)
+
+        # Titre
+        title_label = tk.Label(
+            inner,
+            text=title,
+            font=('Segoe UI', 12, 'bold'),
+            bg='#16213e',
+            fg='#eaeaea'
+        )
+        title_label.pack(anchor='w')
+
+        # Description
+        desc_label = tk.Label(
+            inner,
+            text=description,
+            font=('Segoe UI', 9),
+            bg='#16213e',
+            fg='#a0a0a0'
+        )
+        desc_label.pack(anchor='w', pady=(2, 8))
+
+        # Frame pour slider et valeur
+        slider_frame = tk.Frame(inner, bg='#16213e')
+        slider_frame.pack(fill=tk.X)
+
+        # Variable
+        var = tk.DoubleVar(value=default_value)
+        self.vars[title] = var
+
+        # Label de valeur
+        value_label = tk.Label(
+            slider_frame,
+            text=f"{default_value:.2f}",
+            font=('Segoe UI', 11, 'bold'),
+            bg='#16213e',
+            fg='#00d9ff',
+            width=8
+        )
+        value_label.pack(side=tk.RIGHT, padx=(10, 0))
+
+        # Slider
+        slider = tk.Scale(
+            slider_frame,
+            from_=from_,
+            to=to_,
+            resolution=resolution,
+            orient=tk.HORIZONTAL,
+            variable=var,
+            bg='#16213e',
+            fg='#eaeaea',
+            highlightthickness=0,
+            troughcolor='#0f3460',
+            activebackground='#00d9ff',
+            command=lambda v: self._on_slider_change(v, value_label, command)
+        )
+        slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+    def _on_slider_change(self, value, label, command):
+        """Callback quand un slider change"""
+        label.configure(text=f"{float(value):.2f}")
+        command(float(value))
+
+    def _create_preset_button(self, parent, text, command):
+        """Crée un bouton de préréglage"""
+        return tk.Button(
+            parent,
+            text=text,
+            font=('Segoe UI', 10, 'bold'),
+            bg='#533483',
+            fg='white',
+            activebackground='#6b4498',
+            activeforeground='white',
+            relief=tk.FLAT,
+            padx=15,
+            pady=8,
+            command=command
+        )
+
+    def _update_config(self, param_name, value):
+        """Met à jour un paramètre en temps réel"""
+        if not self.controller or not hasattr(self.controller, 'smooth_mouse'):
+            return
+
+        mouse = self.controller.smooth_mouse
+
+        # Mettre à jour le paramètre correspondant
+        if param_name == 'SENSITIVITY':
+            mouse.sensitivity = value
+        elif param_name == 'MAX_SENSITIVITY':
+            mouse.max_sensitivity = value
+        elif param_name == 'ACCELERATION_CURVE':
+            mouse.acceleration_curve = value
+        elif param_name == 'SMOOTHING':
+            mouse.smoothing = value
+        elif param_name == 'PRECISION_DIVIDER':
+            mouse.precision_divider = value
+        elif param_name == 'DEADZONE':
+            mouse.deadzone = value
+
+    def _preset_gaming(self):
+        """Préréglage pour le jeu"""
+        self._set_all_values(35.0, 80.0, 2.2, 0.2, 3.0, 0.12)
+
+    def _preset_office(self):
+        """Préréglage pour la bureautique"""
+        self._set_all_values(25.0, 50.0, 1.8, 0.4, 4.0, 0.15)
+
+    def _preset_precision(self):
+        """Préréglage pour la précision"""
+        self._set_all_values(15.0, 40.0, 1.2, 0.5, 5.0, 0.10)
+
+    def _set_all_values(self, sens, max_sens, accel, smooth, precision, deadzone):
+        """Définit toutes les valeurs"""
+        values = [sens, max_sens, accel, smooth, precision, deadzone]
+        for var, value in zip(self.vars.values(), values):
+            var.set(value)
 
 
 class ModernGamepadUI:
@@ -280,6 +561,25 @@ class ModernGamepadUI:
         )
         self.status_label.pack(fill=tk.X)
 
+        # Bouton de configuration de la souris
+        config_button_frame = tk.Frame(self.root, bg=self.COLORS['bg'])
+        config_button_frame.pack(side=tk.BOTTOM, pady=(10, 5))
+
+        config_btn = tk.Button(
+            config_button_frame,
+            text="⚙️ Configuration Souris",
+            font=('Segoe UI', 11, 'bold'),
+            bg=self.COLORS['secondary'],
+            fg=self.COLORS['text'],
+            activebackground='#6b4498',
+            activeforeground=self.COLORS['text'],
+            relief=tk.FLAT,
+            padx=25,
+            pady=10,
+            command=self._open_mouse_config
+        )
+        config_btn.pack()
+
         # Pied de page avec chemin de config
         config_path = "config/voice_config.json"
         footer = tk.Label(
@@ -538,6 +838,13 @@ class ModernGamepadUI:
             self.status_label.configure(text=" • ".join(status_messages))
         else:
             self.status_label.configure(text="")
+
+    def _open_mouse_config(self):
+        """Ouvre la fenêtre de configuration de la souris"""
+        if self.controller:
+            MouseConfigWindow(self.root, self.controller)
+        else:
+            print("[UI] Aucun contrôleur lié, impossible d'ouvrir la configuration")
 
     def cleanup(self):
         """Nettoie les ressources"""

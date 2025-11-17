@@ -15,5 +15,9 @@ pyperclip>=1.8.2
 # Contrôle de la souris et du clavier
 pyautogui>=0.9.54
 
+# Reconnaissance d'image sur l'écran
+opencv-python>=4.8.0
+pillow>=10.0.0
+
 # Optionnel : Whisper pour meilleure reconnaissance (plus lourd)
 # openai-whisper>=20230918

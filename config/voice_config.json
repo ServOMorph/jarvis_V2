@@ -20,9 +20,12 @@
   },
   "button_mapping": {
     "1": {
-      "action": "toggle_claude_mode",
-      "params": null,
-      "description": "Mode ClaudeIA VSCode Auto"
+      "action": "toggle_continuous_click_yes",
+      "params": {
+        "image_path": "assets/images/yes.png",
+        "search_interval": 0.3
+      },
+      "description": "Toggle recherche/clic continu yes.png (appuyer pour démarrer/arrêter)"
     },
     "3": {
       "action": "voice_input",

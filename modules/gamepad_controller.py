@@ -6,8 +6,16 @@ Utilise pygame pour la détection de la manette et pyautogui pour les actions
 import pygame
 import pyautogui
 import time
+import sys
+import os
 from typing import Callable, Dict, Any, Optional
 from dataclasses import dataclass
+
+# Ajouter le dossier parent au path pour importer config
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config import MouseConfig, ScrollConfig, GamepadConfig as AppGamepadConfig
+from outils.mouse_controller import SmoothMouseController, SmoothScrollController
 
 
 @dataclass
@@ -38,6 +46,30 @@ class GamepadController:
         self.running = False
         self.button_states = {}
         self.axis_states = {}
+
+        # Initialiser le contrôleur de souris fluide
+        self.smooth_mouse = SmoothMouseController(
+            sensitivity=MouseConfig.SENSITIVITY,
+            max_sensitivity=MouseConfig.MAX_SENSITIVITY,
+            acceleration_curve=MouseConfig.ACCELERATION_CURVE,
+            update_interval=MouseConfig.UPDATE_INTERVAL,
+            smoothing=MouseConfig.SMOOTHING,
+            deadzone=MouseConfig.DEADZONE,
+            precision_divider=MouseConfig.PRECISION_DIVIDER
+        )
+
+        # Initialiser le contrôleur de scroll fluide
+        self.smooth_scroll = SmoothScrollController(
+            sensitivity=ScrollConfig.SENSITIVITY,
+            acceleration_curve=ScrollConfig.ACCELERATION_CURVE,
+            deadzone=ScrollConfig.DEADZONE
+        )
+
+        # Démarrer le contrôleur de souris
+        self.smooth_mouse.start()
+
+        # Configurer les actions pour utiliser les contrôleurs fluides
+        GamepadActions.set_controllers(self.smooth_mouse, self.smooth_scroll)
 
     def connect(self, joystick_id: int = 0) -> bool:
         """
@@ -70,6 +102,9 @@ class GamepadController:
 
     def disconnect(self):
         """Déconnecte la manette"""
+        # Arrêter le contrôleur de souris fluide
+        self.smooth_mouse.cleanup()
+
         if self.joystick:
             self.joystick.quit()
             self.joystick = None
@@ -187,20 +222,41 @@ class GamepadController:
 class GamepadActions:
     """Collection d'actions prédéfinies pour la manette"""
 
+    # Référence au contrôleur de souris (sera défini par le GamepadController)
+    _smooth_mouse_controller = None
+    _smooth_scroll_controller = None
+    _axis_values = {'x': 0.0, 'y': 0.0}  # Stocker les valeurs X et Y
+
+    @classmethod
+    def set_controllers(cls, mouse_controller, scroll_controller):
+        """Définit les contrôleurs pour les actions"""
+        cls._smooth_mouse_controller = mouse_controller
+        cls._smooth_scroll_controller = scroll_controller
+
     @staticmethod
     def mouse_move(sensitivity: float = 10.0):
-        """Retourne une fonction pour déplacer la souris avec un joystick"""
+        """Retourne une fonction pour déplacer la souris horizontalement (utilise le système fluide)"""
         def move(value: float):
-            if abs(value) > 0:
-                pyautogui.moveRel(int(value * sensitivity), 0)
+            # Stocker la valeur X et mettre à jour le contrôleur fluide
+            GamepadActions._axis_values['x'] = value
+            if GamepadActions._smooth_mouse_controller:
+                GamepadActions._smooth_mouse_controller.set_input(
+                    GamepadActions._axis_values['x'],
+                    GamepadActions._axis_values['y']
+                )
         return move
 
     @staticmethod
     def mouse_move_vertical(sensitivity: float = 10.0):
-        """Retourne une fonction pour déplacer la souris verticalement"""
+        """Retourne une fonction pour déplacer la souris verticalement (utilise le système fluide)"""
         def move(value: float):
-            if abs(value) > 0:
-                pyautogui.moveRel(0, int(value * sensitivity))
+            # Stocker la valeur Y et mettre à jour le contrôleur fluide
+            GamepadActions._axis_values['y'] = value
+            if GamepadActions._smooth_mouse_controller:
+                GamepadActions._smooth_mouse_controller.set_input(
+                    GamepadActions._axis_values['x'],
+                    GamepadActions._axis_values['y']
+                )
         return move
 
     @staticmethod
@@ -212,10 +268,10 @@ class GamepadActions:
 
     @staticmethod
     def mouse_scroll(sensitivity: float = 1.0):
-        """Retourne une fonction pour scroller"""
+        """Retourne une fonction pour scroller (utilise le système fluide)"""
         def scroll(value: float):
-            if abs(value) > 0:
-                pyautogui.scroll(int(-value * sensitivity * 10))
+            if GamepadActions._smooth_scroll_controller:
+                GamepadActions._smooth_scroll_controller.scroll(value)
         return scroll
 
     @staticmethod

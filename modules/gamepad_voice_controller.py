@@ -12,8 +12,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modules.gamepad_controller import GamepadController, GamepadConfig, GamepadActions
 from modules.copier_coller import VoiceCopyPaste, VoiceConfig
 from outils.speech_recognizer import RecognitionEngine
+from outils.auto_clicker import AutoClicker
 from typing import Optional
 import time
+import threading
 
 
 class GamepadVoiceController(GamepadController):
@@ -33,11 +35,51 @@ class GamepadVoiceController(GamepadController):
         # Initialiser le système de dictée vocale
         self.voice_paste = VoiceCopyPaste(voice_config or VoiceConfig())
 
+        # Initialiser le clicker automatique
+        self.auto_clicker = AutoClicker(confidence=0.8)
+
         # État de l'enregistrement vocal
         self.voice_button_pressed = False
 
         # État du mode ClaudeIA
         self.claude_mode_active = False
+
+        # État du bouton B (recherche continue en mode toggle)
+        self.search_active = False  # État de la recherche (activée ou non)
+        self.button_b_thread = None
+        self.button_b_stop_event = threading.Event()
+
+        # Chemin de l'image yes.png
+        self.yes_image_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "assets", "images", "yes.png"
+        )
+
+    def _click_yes_image_continuous(self):
+        """
+        Recherche et clique en continu sur l'image yes.png tant que le bouton est pressé
+        """
+        print(f"\n[BOUTON B] 🔍 Recherche continue ACTIVÉE\n")
+
+        click_count = 0
+
+        while not self.button_b_stop_event.is_set():
+            success = self.auto_clicker.click_on_image(
+                self.yes_image_path,
+                button='left',
+                clicks=1
+            )
+
+            if success:
+                click_count += 1
+                print(f"[BOUTON B] ✅ Clic #{click_count} effectué")
+
+            # Petite pause avant la prochaine recherche (évite de surcharger le CPU)
+            # Utiliser wait() au lieu de sleep() pour pouvoir être interrompu rapidement
+            if self.button_b_stop_event.wait(timeout=0.3):
+                break
+
+        print(f"\n[BOUTON B] ⏹️ Recherche ARRÊTÉE - {click_count} clic(s) effectué(s)\n")
 
     def handle_button(self, button_id: int, pressed: bool):
         """
@@ -47,18 +89,45 @@ class GamepadVoiceController(GamepadController):
             button_id: ID du bouton
             pressed: True si pressé, False si relâché
         """
-        # Bouton 1 : Toggle mode ClaudeIA (appui unique)
+        # Bouton 1 (B) : Toggle recherche continue de yes.png
         if button_id == 1:
+            # Détecter uniquement l'appui (pas le relâchement)
             if pressed and button_id not in self.button_states:
+                # Marquer le bouton comme pressé
+                self.button_states[button_id] = True
+
                 # Toggle le mode ClaudeIA
                 self.claude_mode_active = not self.claude_mode_active
                 status = "ACTIVE" if self.claude_mode_active else "DESACTIVE"
                 print(f"\n[CLAUDE IA] Mode VSCode Auto: {status}")
-                # Marquer le bouton comme pressé
-                self.button_states[button_id] = True
+
+                # Toggle la recherche continue
+                if not self.search_active:
+                    # Démarrer la recherche
+                    self.search_active = True
+                    self.button_b_stop_event.clear()
+
+                    print(f"[BOUTON B] ▶️  Démarrage de la recherche continue...")
+
+                    # Lancer la recherche continue dans un thread séparé
+                    self.button_b_thread = threading.Thread(
+                        target=self._click_yes_image_continuous,
+                        daemon=True
+                    )
+                    self.button_b_thread.start()
+
+                else:
+                    # Arrêter la recherche
+                    self.search_active = False
+                    print(f"[BOUTON B] ⏸️  Arrêt de la recherche continue...")
+                    self.button_b_stop_event.set()
+
+                    # Attendre que le thread se termine (avec timeout)
+                    if self.button_b_thread and self.button_b_thread.is_alive():
+                        self.button_b_thread.join(timeout=1.0)
 
             elif not pressed and button_id in self.button_states:
-                # Bouton relâché
+                # Bouton relâché : nettoyer l'état
                 del self.button_states[button_id]
 
         # Bouton 3 : Dictée vocale (maintenir pour enregistrer)
@@ -72,6 +141,17 @@ class GamepadVoiceController(GamepadController):
                 # Bouton relâché : arrêter et reconnaître
                 self.voice_button_pressed = False
                 self.voice_paste.stop_voice_input()
+
+        # Bouton 5 (RB/R1) : Mode précision de la souris (maintenir)
+        elif button_id == 5:
+            if pressed:
+                # Activer le mode précision
+                self.smooth_mouse.set_precision_mode(True)
+                print("[MODE PRÉCISION] Vitesse de la souris réduite")
+            else:
+                # Désactiver le mode précision
+                self.smooth_mouse.set_precision_mode(False)
+                print("[MODE NORMAL] Vitesse de la souris normale")
 
         else:
             # Laisser le contrôleur de base gérer les autres boutons
