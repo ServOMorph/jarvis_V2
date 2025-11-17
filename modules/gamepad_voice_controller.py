@@ -36,16 +36,33 @@ class GamepadVoiceController(GamepadController):
         # État de l'enregistrement vocal
         self.voice_button_pressed = False
 
+        # État du mode ClaudeIA
+        self.claude_mode_active = False
+
     def handle_button(self, button_id: int, pressed: bool):
         """
-        Surcharge pour gérer le bouton de dictée vocale (bouton 3)
+        Surcharge pour gérer les boutons spéciaux (bouton 1 et 3)
 
         Args:
             button_id: ID du bouton
             pressed: True si pressé, False si relâché
         """
+        # Bouton 1 : Toggle mode ClaudeIA (appui unique)
+        if button_id == 1:
+            if pressed and button_id not in self.button_states:
+                # Toggle le mode ClaudeIA
+                self.claude_mode_active = not self.claude_mode_active
+                status = "ACTIVE" if self.claude_mode_active else "DESACTIVE"
+                print(f"\n[CLAUDE IA] Mode VSCode Auto: {status}")
+                # Marquer le bouton comme pressé
+                self.button_states[button_id] = True
+
+            elif not pressed and button_id in self.button_states:
+                # Bouton relâché
+                del self.button_states[button_id]
+
         # Bouton 3 : Dictée vocale (maintenir pour enregistrer)
-        if button_id == 3:
+        elif button_id == 3:
             if pressed and not self.voice_button_pressed:
                 # Bouton pressé : démarrer l'enregistrement
                 self.voice_button_pressed = True

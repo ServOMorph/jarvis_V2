@@ -6,6 +6,8 @@ Point d'entrée principal du programme
 import sys
 import os
 import json
+import threading
+import tkinter as tk
 from pathlib import Path
 
 # Ajouter le dossier racine au path
@@ -14,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from modules.gamepad_voice_controller import GamepadVoiceController, get_voice_gamepad_config
 from modules.copier_coller import VoiceConfig
 from outils.speech_recognizer import RecognitionEngine
+from ui.gamepad_controls_ui import ModernGamepadUI
 
 
 def load_config(config_path: str = "config/voice_config.json") -> dict:
@@ -85,22 +88,20 @@ def print_help():
     print("=" * 70)
     print("📖 CONFIGURATION DE LA MANETTE")
     print("=" * 70)
-    print("\n🎮 BOUTONS:")
-    print("  Bouton 0 (A/X)     : Clic gauche")
-    print("  Bouton 1 (B/O)     : Clic droit")
-    print("  Bouton 2 (X/□)     : Entrée")
-    print("  Bouton 3 (Y/△)     : 🎤 DICTÉE VOCALE (maintenir)")
-    print("  Bouton 4 (LB/L1)   : Alt+Tab (changer fenêtre)")
-    print("  Bouton 5 (RB/R1)   : Ctrl+W (fermer onglet)")
-    print("  Bouton 6 (Back)    : Volume -")
-    print("  Bouton 7 (Start)   : Volume +")
+    print("\n🎮 BOUTONS ACTUELLEMENT CONFIGURÉS:")
+    print("  Bouton 1 (B)       : 🤖 MODE CLAUDE IA (toggle on/off)")
+    print("  Bouton 3 (X)       : 🎤 DICTÉE VOCALE (maintenir)")
 
     print("\n🕹️  JOYSTICKS:")
     print("  Joystick gauche    : Déplacer le curseur de la souris")
     print("  Joystick droit (Y) : Scroll haut/bas")
 
+    print("\n🤖 MODE CLAUDE IA:")
+    print("  Appuyez sur le bouton B pour activer/désactiver")
+    print("  Le statut s'affiche dans l'interface graphique")
+
     print("\n🎤 DICTÉE VOCALE:")
-    print("  1. Maintenez le bouton 3 (Y/△)")
+    print("  1. Maintenez le bouton X (bouton 3)")
     print("  2. Parlez clairement")
     print("  3. Relâchez le bouton")
     print("  4. Le texte reconnu sera automatiquement collé")
@@ -110,10 +111,31 @@ def print_help():
     print("  Langue  : fr-FR (français)")
     print("  Moteur  : Google Speech Recognition")
 
+    print("\n📺 INTERFACE:")
+    print("  Une fenêtre s'ouvrira pour visualiser les contrôles en temps réel")
+
     print("\n❌ QUITTER:")
-    print("  Appuyez sur Ctrl+C")
+    print("  Appuyez sur Ctrl+C ou fermez la fenêtre UI")
 
     print("\n" + "=" * 70 + "\n")
+
+
+def launch_ui(ui_root_ref, config_path="config/voice_config.json", controller_ref=None):
+    """Lance l'interface graphique dans le thread principal"""
+    root = tk.Tk()
+    ui_root_ref[0] = root
+    app = ModernGamepadUI(root, config_path=config_path)
+
+    # Lier l'UI au contrôleur pour synchroniser l'état
+    if controller_ref:
+        app.set_controller(controller_ref[0])
+
+    def on_closing():
+        app.cleanup()
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", on_closing)
+    root.mainloop()
 
 
 def main():
@@ -155,8 +177,25 @@ def main():
     print(" " * 25 + "✅ PRÊT !")
     print("=" * 70 + "\n")
 
+    # Références pour la fenêtre UI et le contrôleur
+    ui_root_ref = [None]
+    controller_ref = [controller]
+
+    # Lancer l'interface graphique dans un thread séparé
+    print("🚀 Lancement de l'interface graphique...\n")
+    ui_thread = threading.Thread(
+        target=launch_ui,
+        args=(ui_root_ref, "config/voice_config.json", controller_ref),
+        daemon=True
+    )
+    ui_thread.start()
+
+    # Petit délai pour laisser l'UI s'initialiser
+    import time
+    time.sleep(0.5)
+
     try:
-        # Lancer la boucle principale
+        # Lancer la boucle principale du contrôleur
         controller.run()
 
     except KeyboardInterrupt:
@@ -167,6 +206,14 @@ def main():
     finally:
         # Nettoyage
         controller.cleanup()
+
+        # Fermer la fenêtre UI si elle est ouverte
+        if ui_root_ref[0]:
+            try:
+                ui_root_ref[0].quit()
+            except:
+                pass
+
         print("\n✅ Ressources libérées. À bientôt !\n")
 
 
