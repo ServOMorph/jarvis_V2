@@ -1,0 +1,10 @@
+{
+  "mouse": {
+    "sensitivity": 20.0,
+    "max_sensitivity": 60.0,
+    "acceleration_curve": 2.0,
+    "smoothing": 0.3,
+    "precision_divider": 3.0,
+    "deadzone": 0.15
+  }
+}

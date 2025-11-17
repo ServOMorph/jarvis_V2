@@ -20,6 +20,19 @@ from config import MouseConfig, ScrollConfig
 class MouseConfigWindow:
     """Fenêtre de configuration des paramètres de la souris"""
 
+    # Valeurs par défaut (depuis MouseConfig)
+    DEFAULT_VALUES = {
+        'SENSITIVITY': 20.0,
+        'MAX_SENSITIVITY': 60.0,
+        'ACCELERATION_CURVE': 2.0,
+        'SMOOTHING': 0.3,
+        'PRECISION_DIVIDER': 3.0,
+        'DEADZONE': 0.15
+    }
+
+    # Fichier de sauvegarde des réglages
+    SETTINGS_FILE = Path(__file__).parent.parent / 'config' / 'mouse_settings.json'
+
     def __init__(self, parent, controller):
         """
         Initialise la fenêtre de configuration
@@ -31,14 +44,23 @@ class MouseConfigWindow:
         self.controller = controller
         self.window = tk.Toplevel(parent)
         self.window.title("⚙️ Configuration de la Souris")
-        self.window.geometry("600x700")
+        self.window.geometry("650x750")
         self.window.configure(bg='#1a1a2e')
         self.window.resizable(False, False)
 
         # Variables pour les sliders
         self.vars = {}
 
+        # Canvas pour cleanup
+        self.canvas = None
+
+        # Charger les réglages sauvegardés
+        self._load_saved_settings()
+
         self._create_ui()
+
+        # Nettoyer les bindings à la fermeture
+        self.window.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _create_ui(self):
         """Crée l'interface de configuration"""
@@ -62,9 +84,35 @@ class MouseConfigWindow:
         )
         subtitle.pack(pady=(0, 20))
 
+        # Conteneur pour la zone scrollable
+        container = tk.Frame(self.window, bg='#1a1a2e')
+        container.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 10))
+
+        # Canvas pour le scroll
+        self.canvas = tk.Canvas(container, bg='#1a1a2e', highlightthickness=0)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.canvas.yview)
+
         # Frame principal avec scroll
-        main_frame = tk.Frame(self.window, bg='#1a1a2e')
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20)
+        main_frame = tk.Frame(self.canvas, bg='#1a1a2e')
+
+        # Configuration du scroll
+        main_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+
+        self.canvas.create_window((0, 0), window=main_frame, anchor="nw", width=580)
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Permettre le scroll avec la molette
+        def _on_mousewheel(event):
+            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        # Packing du canvas et scrollbar
+        self.canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
         # Sensibilité
         self._create_slider(
@@ -130,8 +178,8 @@ class MouseConfigWindow:
             resolution=0.01
         )
 
-        # Boutons de préréglages
-        presets_frame = tk.Frame(self.window, bg='#1a1a2e')
+        # Boutons de préréglages (dans le main_frame scrollable)
+        presets_frame = tk.Frame(main_frame, bg='#1a1a2e')
         presets_frame.pack(pady=20)
 
         tk.Label(
@@ -149,9 +197,45 @@ class MouseConfigWindow:
         self._create_preset_button(buttons_frame, "💼 Bureautique", self._preset_office).pack(side=tk.LEFT, padx=5)
         self._create_preset_button(buttons_frame, "🎯 Précis", self._preset_precision).pack(side=tk.LEFT, padx=5)
 
+        # Boutons Reset, Appliquer et Fermer (en bas de la fenêtre, hors scroll)
+        bottom_frame = tk.Frame(self.window, bg='#1a1a2e')
+        bottom_frame.pack(pady=(10, 20))
+
+        # Bouton Reset
+        reset_btn = tk.Button(
+            bottom_frame,
+            text="🔄 Réinitialiser",
+            font=('Segoe UI', 11, 'bold'),
+            bg='#533483',
+            fg='white',
+            activebackground='#6b4498',
+            activeforeground='white',
+            relief=tk.FLAT,
+            padx=20,
+            pady=10,
+            command=self._reset_to_defaults
+        )
+        reset_btn.pack(side=tk.LEFT, padx=5)
+
+        # Bouton Appliquer
+        apply_btn = tk.Button(
+            bottom_frame,
+            text="✓ Appliquer",
+            font=('Segoe UI', 11, 'bold'),
+            bg='#00d9ff',
+            fg='#1a1a2e',
+            activebackground='#00b8d4',
+            activeforeground='#1a1a2e',
+            relief=tk.FLAT,
+            padx=25,
+            pady=10,
+            command=self._apply_config
+        )
+        apply_btn.pack(side=tk.LEFT, padx=5)
+
         # Bouton fermer
         close_btn = tk.Button(
-            self.window,
+            bottom_frame,
             text="Fermer",
             font=('Segoe UI', 11, 'bold'),
             bg='#e94560',
@@ -159,11 +243,11 @@ class MouseConfigWindow:
             activebackground='#c93550',
             activeforeground='white',
             relief=tk.FLAT,
-            padx=30,
+            padx=25,
             pady=10,
             command=self.window.destroy
         )
-        close_btn.pack(pady=(10, 20))
+        close_btn.pack(side=tk.LEFT, padx=5)
 
     def _create_slider(self, parent, title, description, default_value, from_, to_, command, resolution=1.0):
         """Crée un slider avec son label"""
@@ -284,11 +368,192 @@ class MouseConfigWindow:
         """Préréglage pour la précision"""
         self._set_all_values(15.0, 40.0, 1.2, 0.5, 5.0, 0.10)
 
+    def _reset_to_defaults(self):
+        """Réinitialise tous les paramètres aux valeurs par défaut"""
+        self._set_all_values(
+            self.DEFAULT_VALUES['SENSITIVITY'],
+            self.DEFAULT_VALUES['MAX_SENSITIVITY'],
+            self.DEFAULT_VALUES['ACCELERATION_CURVE'],
+            self.DEFAULT_VALUES['SMOOTHING'],
+            self.DEFAULT_VALUES['PRECISION_DIVIDER'],
+            self.DEFAULT_VALUES['DEADZONE']
+        )
+        print("[Config] Paramètres réinitialisés aux valeurs par défaut")
+
+    def _apply_config(self):
+        """Applique et sauvegarde les paramètres dans config.py"""
+        try:
+            # Récupérer les valeurs actuelles
+            values_list = list(self.vars.values())
+            if len(values_list) != 6:
+                print("[Erreur] Nombre de paramètres incorrect")
+                return
+
+            sens = values_list[0].get()
+            max_sens = values_list[1].get()
+            accel = values_list[2].get()
+            smooth = values_list[3].get()
+            precision = values_list[4].get()
+            deadzone = values_list[5].get()
+
+            # Lire le fichier config.py
+            config_path = Path(__file__).parent.parent / 'config.py'
+            with open(config_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Remplacer les valeurs dans le contenu
+            import re
+
+            # Fonction pour remplacer une valeur
+            def replace_value(pattern, new_value):
+                nonlocal content
+                match = re.search(pattern, content)
+                if match:
+                    old_line = match.group(0)
+                    # Extraire l'indentation et le nom de variable
+                    indent = match.group(1) if match.lastindex >= 1 else '    '
+                    var_name = match.group(2) if match.lastindex >= 2 else ''
+                    new_line = f"{indent}{var_name} = {new_value}"
+                    content = content.replace(old_line, new_line)
+
+            # Remplacer chaque paramètre
+            replace_value(r'(\s+)(SENSITIVITY\s*=\s*)[0-9.]+', sens)
+            replace_value(r'(\s+)(MAX_SENSITIVITY\s*=\s*)[0-9.]+', max_sens)
+            replace_value(r'(\s+)(ACCELERATION_CURVE\s*=\s*)[0-9.]+', accel)
+            replace_value(r'(\s+)(SMOOTHING\s*=\s*)[0-9.]+', smooth)
+            replace_value(r'(\s+)(PRECISION_DIVIDER\s*=\s*)[0-9.]+', precision)
+            replace_value(r'(\s+)(DEADZONE\s*=\s*)[0-9.]+', deadzone)
+
+            # Écrire le fichier modifié
+            with open(config_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            # Mettre à jour aussi les valeurs de MouseConfig en mémoire
+            MouseConfig.SENSITIVITY = sens
+            MouseConfig.MAX_SENSITIVITY = max_sens
+            MouseConfig.ACCELERATION_CURVE = accel
+            MouseConfig.SMOOTHING = smooth
+            MouseConfig.PRECISION_DIVIDER = precision
+            MouseConfig.DEADZONE = deadzone
+
+            print(f"[Config] Paramètres sauvegardés dans config.py")
+            print(f"  - Sensibilité: {sens}")
+            print(f"  - Sensibilité max: {max_sens}")
+            print(f"  - Accélération: {accel}")
+            print(f"  - Lissage: {smooth}")
+            print(f"  - Précision: {precision}")
+            print(f"  - Zone morte: {deadzone}")
+
+            # Afficher un message de confirmation dans l'UI
+            self._show_confirmation()
+
+        except Exception as e:
+            print(f"[Erreur] Impossible de sauvegarder la configuration: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _show_confirmation(self):
+        """Affiche un message de confirmation temporaire"""
+        # Créer un label de confirmation
+        confirm_label = tk.Label(
+            self.window,
+            text="✓ Configuration appliquée et sauvegardée !",
+            font=('Segoe UI', 10, 'bold'),
+            bg='#00d9ff',
+            fg='#1a1a2e',
+            padx=15,
+            pady=5
+        )
+        confirm_label.place(relx=0.5, rely=0.95, anchor='center')
+
+        # Supprimer le message après 2 secondes
+        self.window.after(2000, confirm_label.destroy)
+
     def _set_all_values(self, sens, max_sens, accel, smooth, precision, deadzone):
         """Définit toutes les valeurs"""
         values = [sens, max_sens, accel, smooth, precision, deadzone]
         for var, value in zip(self.vars.values(), values):
             var.set(value)
+
+    def _load_saved_settings(self):
+        """Charge les réglages sauvegardés depuis le fichier JSON"""
+        try:
+            if self.SETTINGS_FILE.exists():
+                import json
+                with open(self.SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    mouse_settings = data.get('mouse', {})
+
+                    # Mettre à jour les valeurs par défaut avec les valeurs sauvegardées
+                    if mouse_settings:
+                        self.DEFAULT_VALUES.update({
+                            'SENSITIVITY': mouse_settings.get('sensitivity', self.DEFAULT_VALUES['SENSITIVITY']),
+                            'MAX_SENSITIVITY': mouse_settings.get('max_sensitivity', self.DEFAULT_VALUES['MAX_SENSITIVITY']),
+                            'ACCELERATION_CURVE': mouse_settings.get('acceleration_curve', self.DEFAULT_VALUES['ACCELERATION_CURVE']),
+                            'SMOOTHING': mouse_settings.get('smoothing', self.DEFAULT_VALUES['SMOOTHING']),
+                            'PRECISION_DIVIDER': mouse_settings.get('precision_divider', self.DEFAULT_VALUES['PRECISION_DIVIDER']),
+                            'DEADZONE': mouse_settings.get('deadzone', self.DEFAULT_VALUES['DEADZONE'])
+                        })
+
+                        # Appliquer directement au contrôleur si disponible
+                        if self.controller and hasattr(self.controller, 'smooth_mouse'):
+                            mouse = self.controller.smooth_mouse
+                            mouse.sensitivity = self.DEFAULT_VALUES['SENSITIVITY']
+                            mouse.max_sensitivity = self.DEFAULT_VALUES['MAX_SENSITIVITY']
+                            mouse.acceleration_curve = self.DEFAULT_VALUES['ACCELERATION_CURVE']
+                            mouse.smoothing = self.DEFAULT_VALUES['SMOOTHING']
+                            mouse.precision_divider = self.DEFAULT_VALUES['PRECISION_DIVIDER']
+                            mouse.deadzone = self.DEFAULT_VALUES['DEADZONE']
+
+                        print("[Config] Réglages chargés depuis mouse_settings.json")
+        except Exception as e:
+            print(f"[Config] Impossible de charger les réglages: {e}")
+
+    def _save_settings(self):
+        """Sauvegarde les réglages actuels dans le fichier JSON"""
+        try:
+            # Récupérer les valeurs actuelles
+            values_list = list(self.vars.values())
+            if len(values_list) != 6:
+                print("[Erreur] Nombre de paramètres incorrect pour la sauvegarde")
+                return
+
+            settings_data = {
+                "mouse": {
+                    "sensitivity": values_list[0].get(),
+                    "max_sensitivity": values_list[1].get(),
+                    "acceleration_curve": values_list[2].get(),
+                    "smoothing": values_list[3].get(),
+                    "precision_divider": values_list[4].get(),
+                    "deadzone": values_list[5].get()
+                }
+            }
+
+            # Créer le dossier config s'il n'existe pas
+            self.SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+            # Écrire le fichier JSON
+            import json
+            with open(self.SETTINGS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(settings_data, f, indent=2, ensure_ascii=False)
+
+            print(f"[Config] Réglages sauvegardés dans {self.SETTINGS_FILE.name}")
+        except Exception as e:
+            print(f"[Erreur] Impossible de sauvegarder les réglages: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _on_close(self):
+        """Nettoie les ressources avant de fermer la fenêtre"""
+        # Sauvegarder automatiquement les réglages
+        self._save_settings()
+
+        # Unbind la molette de la souris
+        if self.canvas:
+            self.canvas.unbind_all("<MouseWheel>")
+
+        # Fermer la fenêtre
+        self.window.destroy()
 
 
 class ModernGamepadUI:

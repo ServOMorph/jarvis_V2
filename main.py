@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from modules.gamepad_voice_controller import GamepadVoiceController, get_voice_gamepad_config
+from modules.gamepad_controller import GamepadConfig, GamepadActions
 from modules.copier_coller import VoiceConfig
 from outils.speech_recognizer import RecognitionEngine
 from ui.gamepad_controls_ui import ModernGamepadUI
@@ -72,6 +73,59 @@ def create_voice_config(config_data: dict = None) -> VoiceConfig:
         max_duration=voice_cfg.get('max_duration', 10.0),
         auto_paste=voice_cfg.get('auto_paste', True),
         feedback=voice_cfg.get('feedback', True)
+    )
+
+
+def create_gamepad_config(config_data: dict = None) -> GamepadConfig:
+    """
+    Crée une GamepadConfig depuis les données de configuration JSON
+
+    Args:
+        config_data: Données de configuration JSON
+
+    Returns:
+        GamepadConfig configuré
+    """
+    # Configuration par défaut
+    default_config = get_voice_gamepad_config()
+
+    if not config_data:
+        return default_config
+
+    # Charger les mappings de boutons depuis button_mapping
+    button_mappings = {}
+    button_mapping_config = config_data.get('button_mapping', {})
+
+    # Mapper les actions depuis le JSON
+    action_map = {
+        'mouse_click_left': GamepadActions.mouse_click('left'),
+        'mouse_click_right': GamepadActions.mouse_click('right'),
+        'key_press_enter': GamepadActions.key_press('enter'),
+        'key_press_esc': GamepadActions.key_press('esc'),
+        'alt_tab': GamepadActions.key_combination('alt', 'tab'),
+        'ctrl_w': GamepadActions.key_combination('ctrl', 'w'),
+        'volume_down': GamepadActions.key_press('volumedown'),
+        'volume_up': GamepadActions.key_press('volumeup'),
+    }
+
+    for btn_id_str, btn_config in button_mapping_config.items():
+        btn_id = int(btn_id_str)
+        action_name = btn_config.get('action', '')
+
+        # Ne mapper que les actions connues (ignorer voice_input et toggle_*)
+        if action_name in action_map:
+            button_mappings[btn_id] = action_map[action_name]
+            print(f"[Config] Bouton {btn_id} -> {action_name}")
+
+    # Charger la configuration gamepad
+    gamepad_cfg = config_data.get('gamepad', {})
+
+    return GamepadConfig(
+        button_mappings=button_mappings if button_mappings else default_config.button_mappings,
+        axis_mappings=default_config.axis_mappings,
+        deadzone=gamepad_cfg.get('deadzone', 0.15),
+        mouse_sensitivity=gamepad_cfg.get('mouse_sensitivity', 15.0),
+        scroll_sensitivity=gamepad_cfg.get('scroll_sensitivity', 2.0)
     )
 
 
@@ -148,7 +202,7 @@ def main():
     config_data = load_config()
 
     # Créer les configurations
-    gamepad_config = get_voice_gamepad_config()
+    gamepad_config = create_gamepad_config(config_data)
     voice_config = create_voice_config(config_data)
 
     # Afficher les informations
