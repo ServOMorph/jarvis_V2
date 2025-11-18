@@ -12,15 +12,15 @@ class MouseConfig:
 
     # Sensibilité du mouvement (plus élevé = plus rapide)
     # Valeurs recommandées : 20-50 pour une utilisation normale
-    SENSITIVITY = 20.0
+    SENSITIVITY = 15.0
 
     # Sensibilité maximale (lors d'une inclinaison complète du joystick)
-    MAX_SENSITIVITY = 60.0
+    MAX_SENSITIVITY = 40.0
 
     # Accélération du curseur (courbe exponentielle)
     # 1.0 = linéaire, >1.0 = accélération progressive
     # Valeurs recommandées : 1.5-2.5
-    ACCELERATION_CURVE = 2.0
+    ACCELERATION_CURVE = 1.2
 
     # Intervalle de mise à jour en secondes (plus petit = plus fluide)
     # Valeurs recommandées : 0.005-0.016 (200Hz à 60Hz)
@@ -28,17 +28,17 @@ class MouseConfig:
 
     # Zone morte du joystick (0.0-1.0)
     # En dessous de cette valeur, le joystick est considéré au repos
-    DEADZONE = 0.15
+    DEADZONE =  0.1
 
     # Lissage du mouvement (0.0-1.0)
     # 0.0 = pas de lissage, 1.0 = lissage maximum
     # Réduit les saccades mais ajoute un léger délai
-    SMOOTHING = 0.3
+    SMOOTHING = 0.5
 
     # Mode précision (quand le bouton RB/R1 est maintenu)
     # Diviseur de vitesse pour le mode précision
     # Plus élevé = plus lent et précis
-    PRECISION_DIVIDER = 3.0  # Divise la vitesse par 3
+    PRECISION_DIVIDER =5.0  # Divise la vitesse par 3
 
 
 # ============================================================================
@@ -48,14 +48,14 @@ class MouseConfig:
 class ScrollConfig:
     """Configuration du scroll avec le joystick droit"""
 
-    # Sensibilité du scroll
-    SENSITIVITY = 3.0
+    # Sensibilité du scroll (augmentée pour plus de réactivité)
+    SENSITIVITY = 50.0
 
-    # Accélération du scroll
-    ACCELERATION_CURVE = 1.8
+    # Accélération du scroll (réduite pour un contrôle plus linéaire)
+    ACCELERATION_CURVE = 1.3
 
-    # Zone morte pour le scroll
-    DEADZONE = 0.2
+    # Zone morte pour le scroll (réduite pour plus de sensibilité)
+    DEADZONE = 0.10
 
 
 # ============================================================================
@@ -109,6 +109,16 @@ POUR UNE SOURIS PLUS PRÉCISE :
 - Diminuez MouseConfig.SENSITIVITY (ex: 15-20)
 - Augmentez MouseConfig.SMOOTHING (ex: 0.4)
 - Diminuez MouseConfig.ACCELERATION_CURVE (ex: 1.2)
+
+POUR UN SCROLL PLUS RAPIDE :
+- Augmentez ScrollConfig.SENSITIVITY (ex: 70-100)
+- Diminuez ScrollConfig.DEADZONE (ex: 0.05)
+- Augmentez ScrollConfig.ACCELERATION_CURVE (ex: 2.0)
+
+POUR UN SCROLL PLUS PRÉCIS :
+- Diminuez ScrollConfig.SENSITIVITY (ex: 20-30)
+- Augmentez ScrollConfig.DEADZONE (ex: 0.20)
+- Diminuez ScrollConfig.ACCELERATION_CURVE (ex: 1.0)
 
 POUR RÉDUIRE LES SACCADES :
 - Diminuez MouseConfig.UPDATE_INTERVAL

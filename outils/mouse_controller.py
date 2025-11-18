@@ -222,13 +222,14 @@ class SmoothMouseController:
 
 
 class SmoothScrollController:
-    """Contrôleur de scroll fluide"""
+    """Contrôleur de scroll fluide avec support horizontal et vertical"""
 
     def __init__(
         self,
         sensitivity: float = 3.0,
         acceleration_curve: float = 1.8,
-        deadzone: float = 0.2
+        deadzone: float = 0.2,
+        update_interval: float = 0.016  # ~60 FPS
     ):
         """
         Initialise le contrôleur de scroll
@@ -237,11 +238,24 @@ class SmoothScrollController:
             sensitivity: Sensibilité du scroll
             acceleration_curve: Courbe d'accélération
             deadzone: Zone morte
+            update_interval: Intervalle de mise à jour en secondes
         """
         self.sensitivity = sensitivity
         self.acceleration_curve = acceleration_curve
         self.deadzone = deadzone
-        self.accumulated_scroll = 0.0
+        self.update_interval = update_interval
+
+        self.accumulated_scroll_vertical = 0.0
+        self.accumulated_scroll_horizontal = 0.0
+
+        # Valeurs actuelles des axes
+        self.current_vertical = 0.0
+        self.current_horizontal = 0.0
+
+        # Thread de mise à jour
+        self.running = False
+        self.update_thread: Optional[threading.Thread] = None
+        self.lock = threading.Lock()
 
     def apply_deadzone(self, value: float) -> float:
         """Applique une zone morte"""
@@ -251,33 +265,95 @@ class SmoothScrollController:
         adjusted = (abs(value) - self.deadzone) / (1.0 - self.deadzone)
         return sign * adjusted
 
+    def _update_loop(self):
+        """Boucle de mise à jour du scroll (exécutée dans un thread)"""
+        while self.running:
+            with self.lock:
+                # Traiter le scroll vertical
+                value_v = self.apply_deadzone(self.current_vertical)
+                if abs(value_v) > 0:
+                    sign = 1 if value_v > 0 else -1
+                    magnitude = abs(value_v)
+                    accelerated = math.pow(magnitude, self.acceleration_curve)
+                    scroll_amount = sign * accelerated * self.sensitivity
+
+                    self.accumulated_scroll_vertical += scroll_amount
+                    max_accumulated = 50.0
+                    self.accumulated_scroll_vertical = max(-max_accumulated, min(max_accumulated, self.accumulated_scroll_vertical))
+
+                    scroll_pixels = int(self.accumulated_scroll_vertical)
+                    if scroll_pixels != 0:
+                        scroll_pixels = max(-20, min(20, scroll_pixels))
+                        try:
+                            pyautogui.scroll(-scroll_pixels)
+                            self.accumulated_scroll_vertical -= scroll_pixels
+                        except Exception:
+                            pass
+                else:
+                    self.accumulated_scroll_vertical = 0.0
+
+                # Traiter le scroll horizontal
+                value_h = self.apply_deadzone(self.current_horizontal)
+                if abs(value_h) > 0:
+                    sign = 1 if value_h > 0 else -1
+                    magnitude = abs(value_h)
+                    accelerated = math.pow(magnitude, self.acceleration_curve)
+                    scroll_amount = sign * accelerated * self.sensitivity
+
+                    self.accumulated_scroll_horizontal += scroll_amount
+                    max_accumulated = 50.0
+                    self.accumulated_scroll_horizontal = max(-max_accumulated, min(max_accumulated, self.accumulated_scroll_horizontal))
+
+                    scroll_pixels = int(self.accumulated_scroll_horizontal)
+                    if scroll_pixels != 0:
+                        scroll_pixels = max(-20, min(20, scroll_pixels))
+                        try:
+                            pyautogui.hscroll(scroll_pixels)
+                            self.accumulated_scroll_horizontal -= scroll_pixels
+                        except Exception:
+                            pass
+                else:
+                    self.accumulated_scroll_horizontal = 0.0
+
+            time.sleep(self.update_interval)
+
     def scroll(self, value: float):
         """
-        Effectue un scroll en fonction de la valeur du joystick
+        Définit la valeur du scroll vertical
 
         Args:
             value: Valeur de l'axe (-1.0 à 1.0)
         """
-        value = self.apply_deadzone(value)
+        with self.lock:
+            self.current_vertical = value
 
-        if abs(value) > 0:
-            # Appliquer accélération
-            sign = 1 if value > 0 else -1
-            magnitude = abs(value)
-            accelerated = math.pow(magnitude, self.acceleration_curve)
-            scroll_amount = sign * accelerated * self.sensitivity
+    def scroll_horizontal(self, value: float):
+        """
+        Définit la valeur du scroll horizontal
 
-            # Accumuler pour les mouvements fractionnaires
-            self.accumulated_scroll += scroll_amount
+        Args:
+            value: Valeur de l'axe (-1.0 à 1.0)
+        """
+        with self.lock:
+            self.current_horizontal = value
 
-            # Scroller par pas entiers
-            scroll_pixels = int(self.accumulated_scroll)
-            if scroll_pixels != 0:
-                try:
-                    pyautogui.scroll(-scroll_pixels)
-                    self.accumulated_scroll -= scroll_pixels
-                except Exception:
-                    pass
+    def start(self):
+        """Démarre le contrôleur de scroll"""
+        if not self.running:
+            self.running = True
+            self.update_thread = threading.Thread(target=self._update_loop, daemon=True)
+            self.update_thread.start()
+
+    def stop(self):
+        """Arrête le contrôleur de scroll"""
+        if self.running:
+            self.running = False
+            if self.update_thread:
+                self.update_thread.join(timeout=1.0)
+
+    def cleanup(self):
+        """Nettoie les ressources"""
+        self.stop()
 
 
 if __name__ == "__main__":

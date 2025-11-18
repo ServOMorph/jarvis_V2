@@ -147,8 +147,9 @@ def print_help():
     print("  Bouton 3 (X)       : 🎤 DICTÉE VOCALE (maintenir)")
 
     print("\n🕹️  JOYSTICKS:")
-    print("  Joystick gauche    : Déplacer le curseur de la souris")
-    print("  Joystick droit (Y) : Scroll haut/bas")
+    print("  Joystick gauche     : Déplacer le curseur de la souris")
+    print("  Joystick droit (X)  : Scroll horizontal (gauche/droite)")
+    print("  Joystick droit (Y)  : Scroll vertical (haut/bas)")
 
     print("\n🤖 MODE CLAUDE IA:")
     print("  Appuyez sur le bouton B pour activer/désactiver")

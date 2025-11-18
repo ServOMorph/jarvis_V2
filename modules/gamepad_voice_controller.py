@@ -175,7 +175,8 @@ def get_voice_gamepad_config() -> GamepadConfig:
     - Bouton 4 (LB/L1) : Alt+Tab
     - Bouton 5 (RB/R1) : Ctrl+W
     - Joystick gauche : Déplacer la souris
-    - Joystick droit (Y) : Scroll
+    - Joystick droit (X) : Scroll horizontal
+    - Joystick droit (Y) : Scroll vertical
     """
     return GamepadConfig(
         button_mappings={
@@ -191,7 +192,8 @@ def get_voice_gamepad_config() -> GamepadConfig:
         axis_mappings={
             0: GamepadActions.mouse_move(sensitivity=15.0),
             1: GamepadActions.mouse_move_vertical(sensitivity=15.0),
-            3: GamepadActions.mouse_scroll(sensitivity=2.0),
+            2: GamepadActions.mouse_scroll_horizontal(sensitivity=5.0),
+            3: GamepadActions.mouse_scroll(sensitivity=5.0),
         },
         deadzone=0.15,
         mouse_sensitivity=15.0,
@@ -228,7 +230,8 @@ if __name__ == "__main__":
         print("Bouton 6 (Back) : Volume -")
         print("Bouton 7 (Start) : Volume +")
         print("\nJoystick gauche : Déplacer la souris")
-        print("Joystick droit (Y) : Scroll")
+        print("Joystick droit (X) : Scroll horizontal (gauche/droite)")
+        print("Joystick droit (Y) : Scroll vertical (haut/bas)")
         print("\n" + "=" * 60)
         print("💡 ASTUCE : Maintenez le bouton 3 et parlez,")
         print("            relâchez pour coller le texte reconnu")

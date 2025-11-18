@@ -20,14 +20,18 @@ from config import MouseConfig, ScrollConfig
 class MouseConfigWindow:
     """Fenêtre de configuration des paramètres de la souris"""
 
-    # Valeurs par défaut (depuis MouseConfig)
+    # Valeurs par défaut (depuis MouseConfig et ScrollConfig)
     DEFAULT_VALUES = {
         'SENSITIVITY': 20.0,
         'MAX_SENSITIVITY': 60.0,
         'ACCELERATION_CURVE': 2.0,
         'SMOOTHING': 0.3,
         'PRECISION_DIVIDER': 3.0,
-        'DEADZONE': 0.15
+        'DEADZONE': 0.15,
+        # Scroll
+        'SCROLL_SENSITIVITY': 50.0,
+        'SCROLL_ACCELERATION_CURVE': 1.3,
+        'SCROLL_DEADZONE': 0.10
     }
 
     # Fichier de sauvegarde des réglages
@@ -43,8 +47,8 @@ class MouseConfigWindow:
         """
         self.controller = controller
         self.window = tk.Toplevel(parent)
-        self.window.title("⚙️ Configuration de la Souris")
-        self.window.geometry("650x750")
+        self.window.title("⚙️ Configuration Souris & Scroll")
+        self.window.geometry("650x850")
         self.window.configure(bg='#1a1a2e')
         self.window.resizable(False, False)
 
@@ -175,6 +179,53 @@ class MouseConfigWindow:
             MouseConfig.DEADZONE,
             0.0, 0.4,
             lambda v: self._update_config('DEADZONE', v),
+            resolution=0.01
+        )
+
+        # Séparateur
+        separator = tk.Frame(main_frame, height=2, bg='#533483')
+        separator.pack(fill=tk.X, pady=20, padx=20)
+
+        # Titre section SCROLL
+        scroll_title = tk.Label(
+            main_frame,
+            text="🖱️ CONFIGURATION DU SCROLL",
+            font=('Segoe UI', 14, 'bold'),
+            bg='#1a1a2e',
+            fg='#00d9ff'
+        )
+        scroll_title.pack(pady=(10, 20))
+
+        # Sensibilité du scroll
+        self._create_slider(
+            main_frame,
+            "Sensibilité du scroll",
+            "Vitesse de défilement avec le joystick droit",
+            ScrollConfig.SENSITIVITY,
+            10.0, 150.0,
+            lambda v: self._update_scroll_config('SENSITIVITY', v),
+            resolution=5.0
+        )
+
+        # Accélération du scroll
+        self._create_slider(
+            main_frame,
+            "Accélération du scroll",
+            "1.0 = Linéaire, >1.5 = Accélération progressive",
+            ScrollConfig.ACCELERATION_CURVE,
+            1.0, 3.0,
+            lambda v: self._update_scroll_config('ACCELERATION_CURVE', v),
+            resolution=0.1
+        )
+
+        # Zone morte du scroll
+        self._create_slider(
+            main_frame,
+            "Zone morte du scroll",
+            "Seuil avant défilement",
+            ScrollConfig.DEADZONE,
+            0.0, 0.3,
+            lambda v: self._update_scroll_config('DEADZONE', v),
             resolution=0.01
         )
 
@@ -356,6 +407,21 @@ class MouseConfigWindow:
         elif param_name == 'DEADZONE':
             mouse.deadzone = value
 
+    def _update_scroll_config(self, param_name, value):
+        """Met à jour un paramètre du scroll en temps réel"""
+        if not self.controller or not hasattr(self.controller, 'smooth_scroll'):
+            return
+
+        scroll = self.controller.smooth_scroll
+
+        # Mettre à jour le paramètre correspondant
+        if param_name == 'SENSITIVITY':
+            scroll.sensitivity = value
+        elif param_name == 'ACCELERATION_CURVE':
+            scroll.acceleration_curve = value
+        elif param_name == 'DEADZONE':
+            scroll.deadzone = value
+
     def _preset_gaming(self):
         """Préréglage pour le jeu"""
         self._set_all_values(35.0, 80.0, 2.2, 0.2, 3.0, 0.12)
@@ -483,6 +549,7 @@ class MouseConfigWindow:
                 with open(self.SETTINGS_FILE, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     mouse_settings = data.get('mouse', {})
+                    scroll_settings = data.get('scroll', {})
 
                     # Mettre à jour les valeurs par défaut avec les valeurs sauvegardées
                     if mouse_settings:
@@ -505,6 +572,20 @@ class MouseConfigWindow:
                             mouse.precision_divider = self.DEFAULT_VALUES['PRECISION_DIVIDER']
                             mouse.deadzone = self.DEFAULT_VALUES['DEADZONE']
 
+                    if scroll_settings:
+                        self.DEFAULT_VALUES.update({
+                            'SCROLL_SENSITIVITY': scroll_settings.get('sensitivity', self.DEFAULT_VALUES['SCROLL_SENSITIVITY']),
+                            'SCROLL_ACCELERATION_CURVE': scroll_settings.get('acceleration_curve', self.DEFAULT_VALUES['SCROLL_ACCELERATION_CURVE']),
+                            'SCROLL_DEADZONE': scroll_settings.get('deadzone', self.DEFAULT_VALUES['SCROLL_DEADZONE'])
+                        })
+
+                        # Appliquer directement au contrôleur si disponible
+                        if self.controller and hasattr(self.controller, 'smooth_scroll'):
+                            scroll = self.controller.smooth_scroll
+                            scroll.sensitivity = self.DEFAULT_VALUES['SCROLL_SENSITIVITY']
+                            scroll.acceleration_curve = self.DEFAULT_VALUES['SCROLL_ACCELERATION_CURVE']
+                            scroll.deadzone = self.DEFAULT_VALUES['SCROLL_DEADZONE']
+
                         print("[Config] Réglages chargés depuis mouse_settings.json")
         except Exception as e:
             print(f"[Config] Impossible de charger les réglages: {e}")
@@ -514,8 +595,8 @@ class MouseConfigWindow:
         try:
             # Récupérer les valeurs actuelles
             values_list = list(self.vars.values())
-            if len(values_list) != 6:
-                print("[Erreur] Nombre de paramètres incorrect pour la sauvegarde")
+            if len(values_list) != 9:
+                print(f"[Erreur] Nombre de paramètres incorrect pour la sauvegarde: {len(values_list)}, attendu 9")
                 return
 
             settings_data = {
@@ -526,6 +607,11 @@ class MouseConfigWindow:
                     "smoothing": values_list[3].get(),
                     "precision_divider": values_list[4].get(),
                     "deadzone": values_list[5].get()
+                },
+                "scroll": {
+                    "sensitivity": values_list[6].get(),
+                    "acceleration_curve": values_list[7].get(),
+                    "deadzone": values_list[8].get()
                 }
             }
 

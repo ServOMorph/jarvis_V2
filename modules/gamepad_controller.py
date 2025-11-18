@@ -65,8 +65,9 @@ class GamepadController:
             deadzone=ScrollConfig.DEADZONE
         )
 
-        # Démarrer le contrôleur de souris
+        # Démarrer les contrôleurs
         self.smooth_mouse.start()
+        self.smooth_scroll.start()
 
         # Configurer les actions pour utiliser les contrôleurs fluides
         GamepadActions.set_controllers(self.smooth_mouse, self.smooth_scroll)
@@ -102,8 +103,9 @@ class GamepadController:
 
     def disconnect(self):
         """Déconnecte la manette"""
-        # Arrêter le contrôleur de souris fluide
+        # Arrêter les contrôleurs fluides
         self.smooth_mouse.cleanup()
+        self.smooth_scroll.cleanup()
 
         if self.joystick:
             self.joystick.quit()
@@ -150,7 +152,10 @@ class GamepadController:
             axis_id: ID de l'axe
             value: Valeur de l'axe (-1.0 à 1.0)
         """
-        value = self.apply_deadzone(value)
+        # Appliquer deadzone seulement pour les axes de mouvement de souris (0 et 1)
+        # Les axes de scroll (2 et 3) gèrent leur propre deadzone dans SmoothScrollController
+        if axis_id in [0, 1]:
+            value = self.apply_deadzone(value)
 
         if self.config.axis_mappings and axis_id in self.config.axis_mappings:
             action = self.config.axis_mappings[axis_id]
@@ -205,6 +210,16 @@ class GamepadController:
                         self.handle_hat(event.hat, event.value)
                         if on_event:
                             on_event(event)
+
+                # Lire constamment les axes pour détecter les changements immédiatement
+                # Ceci est crucial pour le scroll qui doit s'arrêter instantanément
+                num_axes = self.joystick.get_numaxes()
+                for axis_id in range(num_axes):
+                    value = self.joystick.get_axis(axis_id)
+                    # Mettre à jour les axes de scroll (2 et 3) en temps réel
+                    if axis_id in [2, 3] and self.config.axis_mappings and axis_id in self.config.axis_mappings:
+                        action = self.config.axis_mappings[axis_id]
+                        action(value)
 
                 time.sleep(0.01)  # Petit délai pour ne pas surcharger le CPU
 
@@ -268,10 +283,18 @@ class GamepadActions:
 
     @staticmethod
     def mouse_scroll(sensitivity: float = 1.0):
-        """Retourne une fonction pour scroller (utilise le système fluide)"""
+        """Retourne une fonction pour scroller verticalement (utilise le système fluide)"""
         def scroll(value: float):
             if GamepadActions._smooth_scroll_controller:
                 GamepadActions._smooth_scroll_controller.scroll(value)
+        return scroll
+
+    @staticmethod
+    def mouse_scroll_horizontal(sensitivity: float = 1.0):
+        """Retourne une fonction pour scroller horizontalement (utilise le système fluide)"""
+        def scroll(value: float):
+            if GamepadActions._smooth_scroll_controller:
+                GamepadActions._smooth_scroll_controller.scroll_horizontal(value)
         return scroll
 
     @staticmethod
@@ -299,9 +322,10 @@ def get_default_config() -> GamepadConfig:
     - Bouton 1 (B/O) : Clic droit
     - Bouton 2 (X/□) : Entrée
     - Bouton 3 (Y/△) : Échap
-    - Axe 0 : Mouvement horizontal souris
-    - Axe 1 : Mouvement vertical souris
-    - Axe 2/5 : Scroll
+    - Axe 0 : Mouvement horizontal souris (joystick gauche)
+    - Axe 1 : Mouvement vertical souris (joystick gauche)
+    - Axe 2 : Scroll horizontal (joystick droit X)
+    - Axe 3 : Scroll vertical (joystick droit Y)
     """
     return GamepadConfig(
         button_mappings={
@@ -315,9 +339,10 @@ def get_default_config() -> GamepadConfig:
             7: GamepadActions.key_press('volumeup'),    # Start
         },
         axis_mappings={
-            0: GamepadActions.mouse_move(sensitivity=15.0),           # Joystick gauche X
-            1: GamepadActions.mouse_move_vertical(sensitivity=15.0),  # Joystick gauche Y
-            3: GamepadActions.mouse_scroll(sensitivity=2.0),          # Joystick droit Y (scroll)
+            0: GamepadActions.mouse_move(sensitivity=15.0),                # Joystick gauche X
+            1: GamepadActions.mouse_move_vertical(sensitivity=15.0),       # Joystick gauche Y
+            2: GamepadActions.mouse_scroll_horizontal(sensitivity=5.0),    # Joystick droit X (scroll horizontal)
+            3: GamepadActions.mouse_scroll(sensitivity=5.0),               # Joystick droit Y (scroll vertical)
         },
         deadzone=0.15,
         mouse_sensitivity=15.0,
@@ -341,7 +366,8 @@ if __name__ == "__main__":
         print("Bouton 6 (Back) : Volume -")
         print("Bouton 7 (Start) : Volume +")
         print("\nJoystick gauche : Déplacer la souris")
-        print("Joystick droit (Y) : Scroll")
+        print("Joystick droit (X) : Scroll horizontal (gauche/droite)")
+        print("Joystick droit (Y) : Scroll vertical (haut/bas)")
 
         controller.run()
     else:
