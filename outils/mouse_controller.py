@@ -107,9 +107,9 @@ class SmoothMouseController:
         # Interpoler entre la sensibilité de base et la sensibilité max
         sensitivity = self.sensitivity + (self.max_sensitivity - self.sensitivity) * accelerated
 
-        # Appliquer le diviseur de précision si le mode précision est actif
-        if self.precision_mode:
-            sensitivity /= self.precision_divider
+        # Appliquer le multiplicateur de boost si le mode boost est actif
+        if self.precision_mode:  # Renommé conceptuellement en "boost mode"
+            sensitivity *= self.precision_divider  # Multiplier au lieu de diviser pour accélérer
 
         return sign * accelerated * sensitivity
 
@@ -229,7 +229,7 @@ class SmoothScrollController:
         sensitivity: float = 3.0,
         acceleration_curve: float = 1.8,
         deadzone: float = 0.2,
-        update_interval: float = 0.016  # ~60 FPS
+        update_interval: float = 0.008  # ~125 FPS (augmenté pour supporter les hautes vitesses)
     ):
         """
         Initialise le contrôleur de scroll
@@ -278,12 +278,12 @@ class SmoothScrollController:
                     scroll_amount = sign * accelerated * self.sensitivity
 
                     self.accumulated_scroll_vertical += scroll_amount
-                    max_accumulated = 50.0
+                    max_accumulated = 2000.0  # Augmenté pour supporter sensibilité ultra-élevée
                     self.accumulated_scroll_vertical = max(-max_accumulated, min(max_accumulated, self.accumulated_scroll_vertical))
 
                     scroll_pixels = int(self.accumulated_scroll_vertical)
                     if scroll_pixels != 0:
-                        scroll_pixels = max(-20, min(20, scroll_pixels))
+                        scroll_pixels = max(-500, min(500, scroll_pixels))  # Augmenté pour vitesse extrême
                         try:
                             pyautogui.scroll(-scroll_pixels)
                             self.accumulated_scroll_vertical -= scroll_pixels
@@ -301,12 +301,12 @@ class SmoothScrollController:
                     scroll_amount = sign * accelerated * self.sensitivity
 
                     self.accumulated_scroll_horizontal += scroll_amount
-                    max_accumulated = 50.0
+                    max_accumulated = 2000.0  # Augmenté pour supporter sensibilité ultra-élevée
                     self.accumulated_scroll_horizontal = max(-max_accumulated, min(max_accumulated, self.accumulated_scroll_horizontal))
 
                     scroll_pixels = int(self.accumulated_scroll_horizontal)
                     if scroll_pixels != 0:
-                        scroll_pixels = max(-20, min(20, scroll_pixels))
+                        scroll_pixels = max(-500, min(500, scroll_pixels))  # Augmenté pour vitesse extrême
                         try:
                             pyautogui.hscroll(scroll_pixels)
                             self.accumulated_scroll_horizontal -= scroll_pixels

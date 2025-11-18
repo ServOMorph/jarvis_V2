@@ -160,11 +160,11 @@ class MouseConfigWindow:
             resolution=0.05
         )
 
-        # Diviseur de précision
+        # Multiplicateur de boost
         self._create_slider(
             main_frame,
-            "Mode Précision (Bouton RB/R1)",
-            "Diviseur de vitesse (plus élevé = plus lent)",
+            "Mode Boost (Bouton RB/R1)",
+            "Multiplicateur de vitesse (plus élevé = plus rapide)",
             MouseConfig.PRECISION_DIVIDER,
             1.5, 10.0,
             lambda v: self._update_config('PRECISION_DIVIDER', v),
@@ -200,11 +200,11 @@ class MouseConfigWindow:
         self._create_slider(
             main_frame,
             "Sensibilité du scroll",
-            "Vitesse de défilement avec le joystick droit",
+            "Vitesse de défilement avec le joystick droit (10-6000 pour vitesse ultra-extrême)",
             ScrollConfig.SENSITIVITY,
-            10.0, 150.0,
+            10.0, 6000.0,
             lambda v: self._update_scroll_config('SENSITIVITY', v),
-            resolution=5.0
+            resolution=20.0
         )
 
         # Accélération du scroll
@@ -228,25 +228,6 @@ class MouseConfigWindow:
             lambda v: self._update_scroll_config('DEADZONE', v),
             resolution=0.01
         )
-
-        # Boutons de préréglages (dans le main_frame scrollable)
-        presets_frame = tk.Frame(main_frame, bg='#1a1a2e')
-        presets_frame.pack(pady=20)
-
-        tk.Label(
-            presets_frame,
-            text="PRÉRÉGLAGES",
-            font=('Segoe UI', 12, 'bold'),
-            bg='#1a1a2e',
-            fg='#eaeaea'
-        ).pack(pady=(0, 10))
-
-        buttons_frame = tk.Frame(presets_frame, bg='#1a1a2e')
-        buttons_frame.pack()
-
-        self._create_preset_button(buttons_frame, "🎮 Jeu", self._preset_gaming).pack(side=tk.LEFT, padx=5)
-        self._create_preset_button(buttons_frame, "💼 Bureautique", self._preset_office).pack(side=tk.LEFT, padx=5)
-        self._create_preset_button(buttons_frame, "🎯 Précis", self._preset_precision).pack(side=tk.LEFT, padx=5)
 
         # Boutons Reset, Appliquer et Fermer (en bas de la fenêtre, hors scroll)
         bottom_frame = tk.Frame(self.window, bg='#1a1a2e')
@@ -442,17 +423,20 @@ class MouseConfigWindow:
             self.DEFAULT_VALUES['ACCELERATION_CURVE'],
             self.DEFAULT_VALUES['SMOOTHING'],
             self.DEFAULT_VALUES['PRECISION_DIVIDER'],
-            self.DEFAULT_VALUES['DEADZONE']
+            self.DEFAULT_VALUES['DEADZONE'],
+            self.DEFAULT_VALUES['SCROLL_SENSITIVITY'],
+            self.DEFAULT_VALUES['SCROLL_ACCELERATION_CURVE'],
+            self.DEFAULT_VALUES['SCROLL_DEADZONE']
         )
-        print("[Config] Paramètres réinitialisés aux valeurs par défaut")
+        print("[Config] Paramètres réinitialisés aux valeurs par défaut (souris + scroll)")
 
     def _apply_config(self):
         """Applique et sauvegarde les paramètres dans config.py"""
         try:
             # Récupérer les valeurs actuelles
             values_list = list(self.vars.values())
-            if len(values_list) != 6:
-                print("[Erreur] Nombre de paramètres incorrect")
+            if len(values_list) != 9:
+                print(f"[Erreur] Nombre de paramètres incorrect: {len(values_list)}, attendu 9")
                 return
 
             sens = values_list[0].get()
@@ -461,6 +445,9 @@ class MouseConfigWindow:
             smooth = values_list[3].get()
             precision = values_list[4].get()
             deadzone = values_list[5].get()
+            scroll_sens = values_list[6].get()
+            scroll_accel = values_list[7].get()
+            scroll_deadzone = values_list[8].get()
 
             # Lire le fichier config.py
             config_path = Path(__file__).parent.parent / 'config.py'
@@ -470,31 +457,48 @@ class MouseConfigWindow:
             # Remplacer les valeurs dans le contenu
             import re
 
-            # Fonction pour remplacer une valeur
-            def replace_value(pattern, new_value):
+            # Fonction pour remplacer une valeur dans une classe spécifique
+            def replace_value_in_class(class_name, var_name, new_value):
                 nonlocal content
-                match = re.search(pattern, content)
-                if match:
-                    old_line = match.group(0)
-                    # Extraire l'indentation et le nom de variable
-                    indent = match.group(1) if match.lastindex >= 1 else '    '
-                    var_name = match.group(2) if match.lastindex >= 2 else ''
-                    new_line = f"{indent}{var_name} = {new_value}"
-                    content = content.replace(old_line, new_line)
+                # Pattern pour trouver la classe
+                class_pattern = rf'class {class_name}:.*?(?=class |\Z)'
+                class_match = re.search(class_pattern, content, re.DOTALL)
 
-            # Remplacer chaque paramètre
-            replace_value(r'(\s+)(SENSITIVITY\s*=\s*)[0-9.]+', sens)
-            replace_value(r'(\s+)(MAX_SENSITIVITY\s*=\s*)[0-9.]+', max_sens)
-            replace_value(r'(\s+)(ACCELERATION_CURVE\s*=\s*)[0-9.]+', accel)
-            replace_value(r'(\s+)(SMOOTHING\s*=\s*)[0-9.]+', smooth)
-            replace_value(r'(\s+)(PRECISION_DIVIDER\s*=\s*)[0-9.]+', precision)
-            replace_value(r'(\s+)(DEADZONE\s*=\s*)[0-9.]+', deadzone)
+                if class_match:
+                    class_content = class_match.group(0)
+                    # Pattern pour trouver la variable dans cette classe
+                    var_pattern = rf'(\n\s+{var_name}\s*=\s*)([0-9.]+)'
+                    var_match = re.search(var_pattern, class_content)
+
+                    if var_match:
+                        old_value = var_match.group(2)
+                        old_line = var_match.group(1) + old_value
+                        new_line = var_match.group(1) + str(new_value)
+                        content = content.replace(old_line, new_line, 1)
+                        print(f"[Debug] Remplacé {class_name}.{var_name}: {old_value} -> {new_value}")
+                    else:
+                        print(f"[Warning] Variable {var_name} non trouvée dans {class_name}")
+                else:
+                    print(f"[Warning] Classe {class_name} non trouvée")
+
+            # Remplacer les paramètres de MouseConfig
+            replace_value_in_class('MouseConfig', 'SENSITIVITY', sens)
+            replace_value_in_class('MouseConfig', 'MAX_SENSITIVITY', max_sens)
+            replace_value_in_class('MouseConfig', 'ACCELERATION_CURVE', accel)
+            replace_value_in_class('MouseConfig', 'SMOOTHING', smooth)
+            replace_value_in_class('MouseConfig', 'PRECISION_DIVIDER', precision)
+            replace_value_in_class('MouseConfig', 'DEADZONE', deadzone)
+
+            # Remplacer les paramètres de ScrollConfig
+            replace_value_in_class('ScrollConfig', 'SENSITIVITY', scroll_sens)
+            replace_value_in_class('ScrollConfig', 'ACCELERATION_CURVE', scroll_accel)
+            replace_value_in_class('ScrollConfig', 'DEADZONE', scroll_deadzone)
 
             # Écrire le fichier modifié
             with open(config_path, 'w', encoding='utf-8') as f:
                 f.write(content)
 
-            # Mettre à jour aussi les valeurs de MouseConfig en mémoire
+            # Mettre à jour aussi les valeurs en mémoire
             MouseConfig.SENSITIVITY = sens
             MouseConfig.MAX_SENSITIVITY = max_sens
             MouseConfig.ACCELERATION_CURVE = accel
@@ -502,13 +506,39 @@ class MouseConfigWindow:
             MouseConfig.PRECISION_DIVIDER = precision
             MouseConfig.DEADZONE = deadzone
 
+            ScrollConfig.SENSITIVITY = scroll_sens
+            ScrollConfig.ACCELERATION_CURVE = scroll_accel
+            ScrollConfig.DEADZONE = scroll_deadzone
+
+            # Appliquer au contrôleur en temps réel
+            if self.controller:
+                if hasattr(self.controller, 'smooth_mouse'):
+                    mouse = self.controller.smooth_mouse
+                    mouse.sensitivity = sens
+                    mouse.max_sensitivity = max_sens
+                    mouse.acceleration_curve = accel
+                    mouse.smoothing = smooth
+                    mouse.precision_divider = precision
+                    mouse.deadzone = deadzone
+
+                if hasattr(self.controller, 'smooth_scroll'):
+                    scroll = self.controller.smooth_scroll
+                    scroll.sensitivity = scroll_sens
+                    scroll.acceleration_curve = scroll_accel
+                    scroll.deadzone = scroll_deadzone
+
             print(f"[Config] Paramètres sauvegardés dans config.py")
-            print(f"  - Sensibilité: {sens}")
-            print(f"  - Sensibilité max: {max_sens}")
-            print(f"  - Accélération: {accel}")
-            print(f"  - Lissage: {smooth}")
-            print(f"  - Précision: {precision}")
-            print(f"  - Zone morte: {deadzone}")
+            print(f"  SOURIS:")
+            print(f"    - Sensibilité: {sens}")
+            print(f"    - Sensibilité max: {max_sens}")
+            print(f"    - Accélération: {accel}")
+            print(f"    - Lissage: {smooth}")
+            print(f"    - Précision: {precision}")
+            print(f"    - Zone morte: {deadzone}")
+            print(f"  SCROLL:")
+            print(f"    - Sensibilité: {scroll_sens}")
+            print(f"    - Accélération: {scroll_accel}")
+            print(f"    - Zone morte: {scroll_deadzone}")
 
             # Afficher un message de confirmation dans l'UI
             self._show_confirmation()
@@ -535,9 +565,15 @@ class MouseConfigWindow:
         # Supprimer le message après 2 secondes
         self.window.after(2000, confirm_label.destroy)
 
-    def _set_all_values(self, sens, max_sens, accel, smooth, precision, deadzone):
-        """Définit toutes les valeurs"""
-        values = [sens, max_sens, accel, smooth, precision, deadzone]
+    def _set_all_values(self, sens, max_sens, accel, smooth, precision, deadzone, scroll_sens=None, scroll_accel=None, scroll_deadzone=None):
+        """Définit toutes les valeurs (souris + optionnellement scroll)"""
+        if scroll_sens is not None and scroll_accel is not None and scroll_deadzone is not None:
+            # Mode complet avec 9 paramètres (souris + scroll)
+            values = [sens, max_sens, accel, smooth, precision, deadzone, scroll_sens, scroll_accel, scroll_deadzone]
+        else:
+            # Mode rétrocompatible avec 6 paramètres (souris uniquement)
+            values = [sens, max_sens, accel, smooth, precision, deadzone]
+
         for var, value in zip(self.vars.values(), values):
             var.set(value)
 

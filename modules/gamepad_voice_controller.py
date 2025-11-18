@@ -142,14 +142,14 @@ class GamepadVoiceController(GamepadController):
                 self.voice_button_pressed = False
                 self.voice_paste.stop_voice_input()
 
-        # Bouton 5 (RB/R1) : Mode précision de la souris (maintenir)
+        # Bouton 5 (RB/R1) : Mode boost de la souris (maintenir)
         elif button_id == 5:
             if pressed:
-                # Activer le mode précision
+                # Activer le mode boost
                 self.smooth_mouse.set_precision_mode(True)
-                print("[MODE PRÉCISION] Vitesse de la souris réduite")
+                print("[MODE BOOST] Vitesse de la souris accélérée x3")
             else:
-                # Désactiver le mode précision
+                # Désactiver le mode boost
                 self.smooth_mouse.set_precision_mode(False)
                 print("[MODE NORMAL] Vitesse de la souris normale")
 
