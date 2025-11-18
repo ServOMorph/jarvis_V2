@@ -52,6 +52,9 @@ class GamepadVoiceController(GamepadController):
         self.button_r3_thread = None
         self.button_r3_stop_event = threading.Event()
 
+        # État du bouton 13 (recherche Windows avec reconnaissance vocale)
+        self.button_13_pressed = False
+
         # Chemin de l'image yes.png
         self.yes_image_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -86,7 +89,7 @@ class GamepadVoiceController(GamepadController):
 
     def handle_button(self, button_id: int, pressed: bool):
         """
-        Surcharge pour gérer les boutons spéciaux (bouton 9, 3, 5)
+        Surcharge pour gérer les boutons spéciaux (bouton 9, 3, 5, 13)
 
         Args:
             button_id: ID du bouton
@@ -96,8 +99,57 @@ class GamepadVoiceController(GamepadController):
         if pressed:
             print(f"[DEBUG] Bouton {button_id} pressé")
 
+        # Bouton 13 : Recherche Windows avec reconnaissance vocale
+        if button_id == 13:
+            if pressed and not self.button_13_pressed:
+                # Bouton pressé : démarrer l'enregistrement vocal
+                self.button_13_pressed = True
+                print("\n[BOUTON 13] 🎤 Enregistrement vocal démarré...")
+                self.voice_paste.start_voice_input()
+
+            elif not pressed and self.button_13_pressed:
+                # Bouton relâché : arrêter l'enregistrement et effectuer la recherche Windows
+                self.button_13_pressed = False
+                print("[BOUTON 13] ⏹️  Arrêt de l'enregistrement...")
+
+                # Arrêter l'enregistrement et récupérer le texte reconnu
+                # Temporairement désactiver auto_paste
+                original_auto_paste = self.voice_paste.config.auto_paste
+                self.voice_paste.config.auto_paste = False
+
+                text = self.voice_paste.stop_voice_input()
+
+                # Restaurer auto_paste
+                self.voice_paste.config.auto_paste = original_auto_paste
+
+                if text:
+                    import pyautogui
+                    import time
+
+                    print(f"[BOUTON 13] ✅ Texte reconnu : {text}")
+                    print("[BOUTON 13] 🔍 Ouverture de la recherche Windows...")
+
+                    # Appuyer sur la touche Windows
+                    pyautogui.press('win')
+
+                    # Attendre que le menu s'ouvre
+                    time.sleep(0.3)
+
+                    # Taper le texte reconnu
+                    print(f"[BOUTON 13] ⌨️  Saisie : {text}")
+                    pyautogui.write(text, interval=0.05)
+
+                    # Petite pause avant d'appuyer sur Entrée
+                    time.sleep(0.2)
+
+                    # Appuyer sur Entrée
+                    pyautogui.press('enter')
+                    print("[BOUTON 13] ✅ Recherche lancée !\n")
+                else:
+                    print("[BOUTON 13] ❌ Aucun texte reconnu\n")
+
         # Bouton 9 (R3) : Toggle recherche continue de yes.png
-        if button_id == 9:
+        elif button_id == 9:
             # Détecter uniquement l'appui (pas le relâchement)
             if pressed and button_id not in self.button_states:
                 # Marquer le bouton comme pressé
