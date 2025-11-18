@@ -134,15 +134,23 @@ class GamepadController:
             button_id: ID du bouton
             pressed: True si pressé, False si relâché
         """
+        print(f"[DEBUG PARENT] handle_button appelé: bouton={button_id}, pressed={pressed}, in_states={button_id in self.button_states}")
         if self.config.button_mappings and button_id in self.config.button_mappings:
+            print(f"[DEBUG PARENT] Bouton {button_id} trouvé dans button_mappings")
             action = self.config.button_mappings[button_id]
             if pressed and button_id not in self.button_states:
                 # Bouton pressé pour la première fois
+                print(f"[DEBUG PARENT] Exécution de l'action pour le bouton {button_id}")
                 action()
                 self.button_states[button_id] = True
             elif not pressed and button_id in self.button_states:
                 # Bouton relâché
+                print(f"[DEBUG PARENT] Bouton {button_id} relâché, nettoyage de l'état")
                 del self.button_states[button_id]
+            else:
+                print(f"[DEBUG PARENT] Condition non remplie: pressed={pressed}, in_states={button_id in self.button_states}")
+        else:
+            print(f"[DEBUG PARENT] Bouton {button_id} NON trouvé dans button_mappings ou pas de mappings")
 
     def handle_axis(self, axis_id: int, value: float):
         """
@@ -169,7 +177,24 @@ class GamepadController:
             hat_id: ID du chapeau
             value: Tuple (x, y) avec -1, 0 ou 1
         """
-        pass  # À implémenter selon les besoins
+        # Détecter et gérer les directions du D-pad
+        x, y = value
+
+        # Gérer l'axe horizontal (gauche/droite)
+        if x == -1:
+            # D-pad gauche
+            pyautogui.press('left')
+        elif x == 1:
+            # D-pad droite
+            pyautogui.press('right')
+
+        # Gérer l'axe vertical (haut/bas)
+        if y == 1:
+            # D-pad haut
+            pyautogui.press('up')
+        elif y == -1:
+            # D-pad bas
+            pyautogui.press('down')
 
     def run(self, on_event: Optional[Callable] = None):
         """
@@ -326,6 +351,7 @@ def get_default_config() -> GamepadConfig:
     - Axe 1 : Mouvement vertical souris (joystick gauche)
     - Axe 2 : Scroll horizontal (joystick droit X)
     - Axe 3 : Scroll vertical (joystick droit Y)
+    - D-pad : Touches fléchées du clavier (↑, ↓, ←, →)
     """
     return GamepadConfig(
         button_mappings={

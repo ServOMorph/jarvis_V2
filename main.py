@@ -104,6 +104,7 @@ def create_gamepad_config(config_data: dict = None) -> GamepadConfig:
         'key_press_esc': GamepadActions.key_press('esc'),
         'alt_tab': GamepadActions.key_combination('alt', 'tab'),
         'ctrl_w': GamepadActions.key_combination('ctrl', 'w'),
+        'key_combination_ctrl_z': GamepadActions.key_combination('ctrl', 'z'),
         'volume_down': GamepadActions.key_press('volumedown'),
         'volume_up': GamepadActions.key_press('volumeup'),
     }

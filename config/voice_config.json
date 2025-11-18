@@ -25,12 +25,9 @@
       "description": "Clic gauche de la souris"
     },
     "1": {
-      "action": "toggle_continuous_click_yes",
-      "params": {
-        "image_path": "assets/images/yes.png",
-        "search_interval": 0.3
-      },
-      "description": "Toggle recherche/clic continu yes.png (appuyer pour démarrer/arrêter)"
+      "action": "key_press_enter",
+      "params": null,
+      "description": "Touche Entrée"
     },
     "2": {
       "action": "mouse_click_right",
@@ -41,6 +38,19 @@
       "action": "voice_input",
       "params": null,
       "description": "Dictée vocale (maintenir)"
+    },
+    "8": {
+      "action": "key_combination_ctrl_z",
+      "params": null,
+      "description": "Ctrl+Z (annuler)"
+    },
+    "9": {
+      "action": "toggle_continuous_click_yes",
+      "params": {
+        "image_path": "assets/images/yes.png",
+        "search_interval": 0.3
+      },
+      "description": "Toggle recherche/clic continu yes.png (appuyer pour démarrer/arrêter)"
     }
   }
 }
