@@ -107,6 +107,9 @@ def create_gamepad_config(config_data: dict = None) -> GamepadConfig:
         'key_combination_ctrl_z': GamepadActions.key_combination('ctrl', 'z'),
         'volume_down': GamepadActions.key_press('volumedown'),
         'volume_up': GamepadActions.key_press('volumeup'),
+        'virtual_desktop_left': GamepadActions.virtual_desktop_left(),
+        'virtual_desktop_right': GamepadActions.virtual_desktop_right(),
+        # special_voice_commands est géré dans gamepad_voice_controller.py (bouton 10)
     }
 
     for btn_id_str, btn_config in button_mapping_config.items():

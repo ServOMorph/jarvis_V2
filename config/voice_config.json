@@ -39,6 +39,16 @@
       "params": null,
       "description": "Dictée vocale (maintenir)"
     },
+    "6": {
+      "action": "virtual_desktop_left",
+      "params": null,
+      "description": "Bureau virtuel gauche (Ctrl+Win+Gauche)"
+    },
+    "7": {
+      "action": "virtual_desktop_right",
+      "params": null,
+      "description": "Bureau virtuel droite (Ctrl+Win+Droite)"
+    },
     "8": {
       "action": "key_combination_ctrl_z",
       "params": null,
@@ -51,6 +61,11 @@
         "search_interval": 0.3
       },
       "description": "Toggle recherche/clic continu yes.png (appuyer pour démarrer/arrêter)"
+    },
+    "10": {
+      "action": "special_voice_commands",
+      "params": null,
+      "description": "Commandes vocales spéciales (maintenir et parler)"
     }
   }
 }

@@ -336,6 +336,27 @@ class GamepadActions:
             pyautogui.hotkey(*keys)
         return press
 
+    @staticmethod
+    def virtual_desktop_left():
+        """Retourne une fonction pour passer au bureau virtuel de gauche (Ctrl+Win+Gauche)"""
+        def switch():
+            pyautogui.hotkey('ctrl', 'win', 'left')
+        return switch
+
+    @staticmethod
+    def virtual_desktop_right():
+        """Retourne une fonction pour passer au bureau virtuel de droite (Ctrl+Win+Droite)"""
+        def switch():
+            pyautogui.hotkey('ctrl', 'win', 'right')
+        return switch
+
+    @staticmethod
+    def lock_windows():
+        """Retourne une fonction pour verrouiller Windows (Win+L)"""
+        def lock():
+            pyautogui.hotkey('win', 'l')
+        return lock
+
 
 # Configuration exemple
 def get_default_config() -> GamepadConfig:
@@ -361,8 +382,9 @@ def get_default_config() -> GamepadConfig:
             3: GamepadActions.key_press('esc'),         # Y/△
             4: GamepadActions.key_combination('alt', 'tab'),  # LB/L1
             5: GamepadActions.key_combination('ctrl', 'w'),   # RB/R1
-            6: GamepadActions.key_press('volumedown'),  # Back/Select
-            7: GamepadActions.key_press('volumeup'),    # Start
+            6: GamepadActions.virtual_desktop_left(),   # Back/Select - Bureau virtuel gauche
+            7: GamepadActions.virtual_desktop_right(),  # Start - Bureau virtuel droite
+            # Bouton 10 est géré spécialement dans gamepad_voice_controller.py
         },
         axis_mappings={
             0: GamepadActions.mouse_move(sensitivity=15.0),                # Joystick gauche X
@@ -389,11 +411,13 @@ if __name__ == "__main__":
         print("Bouton 3 (Y/△) : Échap")
         print("Bouton 4 (LB/L1) : Alt+Tab")
         print("Bouton 5 (RB/R1) : Ctrl+W (fermer onglet)")
-        print("Bouton 6 (Back) : Volume -")
-        print("Bouton 7 (Start) : Volume +")
+        print("Bouton 6 (Back) : Bureau virtuel gauche ◀")
+        print("Bouton 7 (Start) : Bureau virtuel droite ▶")
+        print("Bouton 10 (Stick gauche) : Commandes vocales spéciales 🎤")
         print("\nJoystick gauche : Déplacer la souris")
         print("Joystick droit (X) : Scroll horizontal (gauche/droite)")
         print("Joystick droit (Y) : Scroll vertical (haut/bas)")
+        print("D-pad : Touches fléchées (↑, ↓, ←, →)")
 
         controller.run()
     else:

@@ -55,6 +55,9 @@ class GamepadVoiceController(GamepadController):
         # État du bouton 13 (recherche Windows avec reconnaissance vocale)
         self.button_13_pressed = False
 
+        # État du bouton 10 (commandes vocales spéciales)
+        self.button_10_pressed = False
+
         # Chemin de l'image yes.png
         self.yes_image_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -87,9 +90,85 @@ class GamepadVoiceController(GamepadController):
 
         print(f"\n[BOUTON R3] ⏹️ Recherche ARRÊTÉE - {click_count} clic(s) effectué(s)\n")
 
+    def _execute_special_command(self, text: str):
+        """
+        Exécute une commande vocale spéciale
+
+        Args:
+            text: Texte reconnu depuis la voix
+        """
+        import pyautogui
+        import time
+
+        text_lower = text.lower().strip()
+
+        print(f"[COMMANDE SPÉCIALE] Analyse de : '{text}'")
+
+        # Commandes de verrouillage
+        if "verrouiller windows" in text_lower or "verrouille windows" in text_lower or "verrouiller" in text_lower:
+            print("[COMMANDE SPÉCIALE] 🔒 Verrouillage de Windows...")
+            # Utiliser keyDown/keyUp pour plus de fiabilité avec la touche Windows
+            pyautogui.keyDown('win')
+            time.sleep(0.05)
+            pyautogui.press('l')
+            time.sleep(0.05)
+            pyautogui.keyUp('win')
+
+        # Commandes de bureau virtuel
+        elif "nouveau bureau" in text_lower or "créer bureau" in text_lower:
+            print("[COMMANDE SPÉCIALE] 🖥️ Création d'un nouveau bureau virtuel...")
+            pyautogui.keyDown('ctrl')
+            pyautogui.keyDown('win')
+            time.sleep(0.05)
+            pyautogui.press('d')
+            time.sleep(0.05)
+            pyautogui.keyUp('win')
+            pyautogui.keyUp('ctrl')
+
+        elif "fermer bureau" in text_lower or "ferme bureau" in text_lower:
+            print("[COMMANDE SPÉCIALE] 🖥️ Fermeture du bureau virtuel actuel...")
+            pyautogui.keyDown('ctrl')
+            pyautogui.keyDown('win')
+            time.sleep(0.05)
+            pyautogui.press('f4')
+            time.sleep(0.05)
+            pyautogui.keyUp('win')
+            pyautogui.keyUp('ctrl')
+
+        # Commandes de fenêtres
+        elif "task manager" in text_lower or "gestionnaire" in text_lower:
+            print("[COMMANDE SPÉCIALE] 📊 Ouverture du Gestionnaire des tâches...")
+            pyautogui.hotkey('ctrl', 'shift', 'esc')
+
+        elif "explorateur" in text_lower or "explorer" in text_lower:
+            print("[COMMANDE SPÉCIALE] 📁 Ouverture de l'Explorateur de fichiers...")
+            pyautogui.keyDown('win')
+            time.sleep(0.05)
+            pyautogui.press('e')
+            time.sleep(0.05)
+            pyautogui.keyUp('win')
+
+        elif "paramètres" in text_lower or "settings" in text_lower:
+            print("[COMMANDE SPÉCIALE] ⚙️ Ouverture des Paramètres Windows...")
+            pyautogui.keyDown('win')
+            time.sleep(0.05)
+            pyautogui.press('i')
+            time.sleep(0.05)
+            pyautogui.keyUp('win')
+
+        else:
+            print(f"[COMMANDE SPÉCIALE] ❌ Commande non reconnue : '{text}'")
+            print("[COMMANDE SPÉCIALE] 💡 Commandes disponibles :")
+            print("  - 'verrouiller windows' : Verrouiller la session")
+            print("  - 'nouveau bureau' : Créer un bureau virtuel")
+            print("  - 'fermer bureau' : Fermer le bureau virtuel actuel")
+            print("  - 'task manager' : Ouvrir le gestionnaire des tâches")
+            print("  - 'explorateur' : Ouvrir l'explorateur de fichiers")
+            print("  - 'paramètres' : Ouvrir les paramètres Windows")
+
     def handle_button(self, button_id: int, pressed: bool):
         """
-        Surcharge pour gérer les boutons spéciaux (bouton 9, 3, 5, 13)
+        Surcharge pour gérer les boutons spéciaux (bouton 9, 3, 5, 10, 13)
 
         Args:
             button_id: ID du bouton
@@ -99,8 +178,38 @@ class GamepadVoiceController(GamepadController):
         if pressed:
             print(f"[DEBUG] Bouton {button_id} pressé")
 
+        # Bouton 10 : Commandes vocales spéciales
+        if button_id == 10:
+            if pressed and not self.button_10_pressed:
+                # Bouton pressé : démarrer l'enregistrement vocal
+                self.button_10_pressed = True
+                print("\n[BOUTON 10] 🎤 Enregistrement de la commande vocale...")
+                print("[BOUTON 10] 💡 Dites une commande (ex: 'verrouiller windows')")
+                self.voice_paste.start_voice_input()
+
+            elif not pressed and self.button_10_pressed:
+                # Bouton relâché : arrêter l'enregistrement et exécuter la commande
+                self.button_10_pressed = False
+                print("[BOUTON 10] ⏹️  Arrêt de l'enregistrement...")
+
+                # Arrêter l'enregistrement et récupérer le texte reconnu
+                # Temporairement désactiver auto_paste
+                original_auto_paste = self.voice_paste.config.auto_paste
+                self.voice_paste.config.auto_paste = False
+
+                text = self.voice_paste.stop_voice_input()
+
+                # Restaurer auto_paste
+                self.voice_paste.config.auto_paste = original_auto_paste
+
+                if text:
+                    print(f"[BOUTON 10] ✅ Texte reconnu : '{text}'")
+                    self._execute_special_command(text)
+                else:
+                    print("[BOUTON 10] ❌ Aucun texte reconnu\n")
+
         # Bouton 13 : Recherche Windows avec reconnaissance vocale
-        if button_id == 13:
+        elif button_id == 13:
             if pressed and not self.button_13_pressed:
                 # Bouton pressé : démarrer l'enregistrement vocal
                 self.button_13_pressed = True
