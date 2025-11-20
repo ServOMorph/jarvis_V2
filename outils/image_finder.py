@@ -10,6 +10,7 @@ from typing import Optional, Tuple, List
 from pathlib import Path
 import time
 from screeninfo import get_monitors
+import mss
 
 
 class ImageFinder:
@@ -68,6 +69,63 @@ class ImageFinder:
             print(f"[ImageFinder] ❌ Erreur lors de la détection des écrans : {e}")
             return None
 
+    def _find_image_with_mss(
+        self,
+        template_path: str,
+        grayscale: bool = True
+    ) -> Optional[Tuple[int, int, int, int]]:
+        """
+        Recherche une image en utilisant mss pour capturer chaque écran
+
+        Args:
+            template_path: Chemin vers l'image à rechercher
+            grayscale: Rechercher en niveaux de gris
+
+        Returns:
+            Tuple (x, y, width, height) de la position trouvée ou None
+        """
+        try:
+            template = cv2.imread(template_path, cv2.IMREAD_GRAYSCALE if grayscale else cv2.IMREAD_COLOR)
+            if template is None:
+                print(f"❌ Impossible de charger l'image : {template_path}")
+                return None
+
+            template_h, template_w = template.shape[:2]
+
+            with mss.mss() as sct:
+                monitors = sct.monitors[1:]
+                print(f"[ImageFinder DEBUG] Recherche sur {len(monitors)} écran(s) avec mss...")
+
+                for i, monitor in enumerate(monitors, 1):
+                    print(f"[ImageFinder DEBUG] Écran {i}: {monitor['width']}x{monitor['height']} à ({monitor['left']}, {monitor['top']})")
+
+                    screenshot = sct.grab(monitor)
+                    img = np.array(screenshot)
+                    img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+
+                    if grayscale:
+                        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+                    result = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
+                    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
+                    if max_val >= self.confidence:
+                        x = monitor['left'] + max_loc[0]
+                        y = monitor['top'] + max_loc[1]
+                        print(f"[ImageFinder DEBUG] ✅ Image trouvée sur écran {i} à ({x}, {y}) - confiance: {max_val:.2f}")
+                        return (x, y, template_w, template_h)
+                    else:
+                        print(f"[ImageFinder DEBUG] ❌ Image non trouvée sur écran {i} - confiance max: {max_val:.2f}")
+
+                print(f"[ImageFinder DEBUG] Image non trouvée sur aucun des {len(monitors)} écrans")
+                return None
+
+        except Exception as e:
+            print(f"[ImageFinder DEBUG] Erreur mss: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
     def find_image_on_screen(
         self,
         template_path: str,
@@ -86,50 +144,13 @@ class ImageFinder:
             Tuple (x, y, width, height) de la position trouvée ou None si non trouvée
         """
         try:
-            # Vérifier que le fichier existe
             if not Path(template_path).exists():
                 print(f"❌ Image introuvable : {template_path}")
                 return None
 
-            # Si aucune région n'est spécifiée et que search_all_screens est activé,
-            # chercher sur chaque écran individuellement
             if region is None and self.search_all_screens:
-                try:
-                    monitors = get_monitors()
-                    print(f"[ImageFinder DEBUG] Recherche sur {len(monitors)} écran(s)...")
+                return self._find_image_with_mss(template_path, grayscale)
 
-                    for i, monitor in enumerate(monitors, 1):
-                        # Définir la région pour cet écran spécifique
-                        screen_region = (monitor.x, monitor.y, monitor.width, monitor.height)
-                        print(f"[ImageFinder DEBUG] Écran {i}: région={screen_region}")
-
-                        # Chercher sur cet écran
-                        location = pyautogui.locateOnScreen(
-                            template_path,
-                            confidence=self.confidence,
-                            region=screen_region,
-                            grayscale=grayscale
-                        )
-
-                        if location:
-                            # Image trouvée sur cet écran
-                            print(f"[ImageFinder DEBUG] ✅ Image trouvée sur écran {i} à ({location.left}, {location.top})")
-                            return (location.left, location.top, location.width, location.height)
-                        else:
-                            print(f"[ImageFinder DEBUG] ❌ Image non trouvée sur écran {i}")
-
-                    # Image non trouvée sur aucun écran
-                    print(f"[ImageFinder DEBUG] Image non trouvée sur aucun des {len(monitors)} écrans")
-                    return None
-
-                except Exception as e:
-                    # Si la recherche multi-écrans échoue, fallback sur la méthode standard
-                    print(f"[ImageFinder DEBUG] Erreur multi-écrans: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    pass
-
-            # Méthode standard (région spécifiée ou search_all_screens désactivé)
             location = pyautogui.locateOnScreen(
                 template_path,
                 confidence=self.confidence,
@@ -138,14 +159,71 @@ class ImageFinder:
             )
 
             if location:
-                # Image trouvée
                 return (location.left, location.top, location.width, location.height)
             else:
                 return None
 
         except Exception:
-            # Pas de log, retourner simplement None
             return None
+
+    def _find_all_images_with_mss(
+        self,
+        template_path: str,
+        grayscale: bool = True,
+        threshold: float = None
+    ) -> List[Tuple[int, int, int, int]]:
+        """
+        Recherche toutes les occurrences d'une image en utilisant mss
+
+        Args:
+            template_path: Chemin vers l'image à rechercher
+            grayscale: Rechercher en niveaux de gris
+            threshold: Seuil de confiance (utilise self.confidence par défaut)
+
+        Returns:
+            Liste de tuples (x, y, width, height) des positions trouvées
+        """
+        try:
+            template = cv2.imread(template_path, cv2.IMREAD_GRAYSCALE if grayscale else cv2.IMREAD_COLOR)
+            if template is None:
+                print(f"❌ Impossible de charger l'image : {template_path}")
+                return []
+
+            template_h, template_w = template.shape[:2]
+            if threshold is None:
+                threshold = self.confidence
+
+            all_locations = []
+
+            with mss.mss() as sct:
+                monitors = sct.monitors[1:]
+
+                for i, monitor in enumerate(monitors, 1):
+                    screenshot = sct.grab(monitor)
+                    img = np.array(screenshot)
+                    img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+
+                    if grayscale:
+                        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+                    result = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
+                    locations = np.where(result >= threshold)
+
+                    for pt in zip(*locations[::-1]):
+                        x = monitor['left'] + pt[0]
+                        y = monitor['top'] + pt[1]
+                        all_locations.append((x, y, template_w, template_h))
+
+            if all_locations:
+                print(f"✅ {len(all_locations)} occurrence(s) trouvée(s)")
+            else:
+                print(f"⚠️  Aucune occurrence trouvée")
+
+            return all_locations
+
+        except Exception as e:
+            print(f"❌ Erreur lors de la recherche d'images : {e}")
+            return []
 
     def find_all_images_on_screen(
         self,
@@ -165,45 +243,13 @@ class ImageFinder:
             Liste de tuples (x, y, width, height) des positions trouvées
         """
         try:
-            # Vérifier que le fichier existe
             if not Path(template_path).exists():
                 print(f"❌ Image introuvable : {template_path}")
                 return []
 
-            all_locations = []
-
-            # Si aucune région n'est spécifiée et que search_all_screens est activé,
-            # chercher sur chaque écran individuellement
             if region is None and self.search_all_screens:
-                try:
-                    monitors = get_monitors()
-                    for monitor in monitors:
-                        # Définir la région pour cet écran spécifique
-                        screen_region = (monitor.x, monitor.y, monitor.width, monitor.height)
+                return self._find_all_images_with_mss(template_path, grayscale)
 
-                        # Chercher toutes les occurrences sur cet écran
-                        locations = list(pyautogui.locateAllOnScreen(
-                            template_path,
-                            confidence=self.confidence,
-                            region=screen_region,
-                            grayscale=grayscale
-                        ))
-
-                        # Ajouter les résultats
-                        all_locations.extend([(loc.left, loc.top, loc.width, loc.height) for loc in locations])
-
-                    if all_locations:
-                        print(f"✅ {len(all_locations)} occurrence(s) trouvée(s)")
-                        return all_locations
-                    else:
-                        print(f"⚠️  Aucune occurrence trouvée")
-                        return []
-
-                except Exception:
-                    # Si la recherche multi-écrans échoue, fallback sur la méthode standard
-                    pass
-
-            # Méthode standard (région spécifiée ou search_all_screens désactivé)
             locations = list(pyautogui.locateAllOnScreen(
                 template_path,
                 confidence=self.confidence,

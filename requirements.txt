@@ -21,6 +21,7 @@ pillow>=10.0.0
 
 # Détection multi-écrans
 screeninfo>=0.8.1
+mss>=9.0.1
 
 # Optionnel : Whisper pour meilleure reconnaissance (plus lourd)
 # openai-whisper>=20230918
