@@ -19,5 +19,8 @@ pyautogui>=0.9.54
 opencv-python>=4.8.0
 pillow>=10.0.0
 
+# Détection multi-écrans
+screeninfo>=0.8.1
+
 # Optionnel : Whisper pour meilleure reconnaissance (plus lourd)
 # openai-whisper>=20230918

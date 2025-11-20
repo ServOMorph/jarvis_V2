@@ -46,6 +46,7 @@ class GamepadController:
         self.running = False
         self.button_states = {}
         self.axis_states = {}
+        self.gamepad_enabled = True  # État pour activer/désactiver les commandes de la manette
 
         # Initialiser le contrôleur de souris fluide
         self.smooth_mouse = SmoothMouseController(
@@ -134,6 +135,10 @@ class GamepadController:
             button_id: ID du bouton
             pressed: True si pressé, False si relâché
         """
+        # Ignorer les actions si la manette est désactivée
+        if not self.gamepad_enabled:
+            return
+
         print(f"[DEBUG PARENT] handle_button appelé: bouton={button_id}, pressed={pressed}, in_states={button_id in self.button_states}")
         if self.config.button_mappings and button_id in self.config.button_mappings:
             print(f"[DEBUG PARENT] Bouton {button_id} trouvé dans button_mappings")
@@ -160,6 +165,20 @@ class GamepadController:
             axis_id: ID de l'axe
             value: Valeur de l'axe (-1.0 à 1.0)
         """
+        # Ignorer les actions si la manette est désactivée
+        if not self.gamepad_enabled:
+            # Si la manette est désactivée, réinitialiser les valeurs pour arrêter les mouvements
+            if axis_id in [0, 1]:
+                GamepadActions._axis_values['x'] = 0.0
+                GamepadActions._axis_values['y'] = 0.0
+                if GamepadActions._smooth_mouse_controller:
+                    GamepadActions._smooth_mouse_controller.set_input(0.0, 0.0)
+            elif axis_id in [2, 3]:
+                if GamepadActions._smooth_scroll_controller:
+                    GamepadActions._smooth_scroll_controller.scroll(0.0)
+                    GamepadActions._smooth_scroll_controller.scroll_horizontal(0.0)
+            return
+
         # Appliquer deadzone seulement pour les axes de mouvement de souris (0 et 1)
         # Les axes de scroll (2 et 3) gèrent leur propre deadzone dans SmoothScrollController
         if axis_id in [0, 1]:
@@ -177,6 +196,10 @@ class GamepadController:
             hat_id: ID du chapeau
             value: Tuple (x, y) avec -1, 0 ou 1
         """
+        # Ignorer les actions si la manette est désactivée
+        if not self.gamepad_enabled:
+            return
+
         # Détecter et gérer les directions du D-pad
         x, y = value
 

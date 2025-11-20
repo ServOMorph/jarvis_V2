@@ -866,6 +866,19 @@ class ModernGamepadUI:
         )
         subtitle.pack()
 
+        # Indicateur d'état de la manette
+        self.gamepad_status_indicator = tk.Label(
+            header_frame,
+            text="✅ MANETTE ACTIVE",
+            font=('Segoe UI', 14, 'bold'),
+            bg='#00d900',
+            fg='white',
+            padx=20,
+            pady=8,
+            relief=tk.FLAT
+        )
+        self.gamepad_status_indicator.pack(pady=(10, 0))
+
         # Zone de défilement
         main_container = tk.Frame(self.root, bg=self.COLORS['bg'])
         main_container.pack(fill=tk.BOTH, expand=True, padx=30, pady=10)
@@ -948,10 +961,43 @@ class ModernGamepadUI:
         )
         self.status_label.pack(fill=tk.X)
 
-        # Bouton de configuration de la souris
+        # Boutons de contrôle (Configuration et Affichage)
         config_button_frame = tk.Frame(self.root, bg=self.COLORS['bg'])
         config_button_frame.pack(side=tk.BOTTOM, pady=(10, 5))
 
+        # Bouton Toggle Manette (Activer/Désactiver)
+        self.toggle_btn = tk.Button(
+            config_button_frame,
+            text="✅ Manette ACTIVÉE",
+            font=('Segoe UI', 12, 'bold'),
+            bg='#00d900',
+            fg='white',
+            activebackground='#00b000',
+            activeforeground='white',
+            relief=tk.FLAT,
+            padx=30,
+            pady=12,
+            command=self._toggle_gamepad
+        )
+        self.toggle_btn.pack(side=tk.LEFT, padx=5)
+
+        # Bouton Affichage Contrôle
+        display_btn = tk.Button(
+            config_button_frame,
+            text="🎮 Affichage Contrôle",
+            font=('Segoe UI', 11, 'bold'),
+            bg=self.COLORS['primary'],
+            fg=self.COLORS['text'],
+            activebackground='#c93550',
+            activeforeground=self.COLORS['text'],
+            relief=tk.FLAT,
+            padx=25,
+            pady=10,
+            command=self._open_gamepad_image
+        )
+        display_btn.pack(side=tk.LEFT, padx=5)
+
+        # Bouton Configuration Souris
         config_btn = tk.Button(
             config_button_frame,
             text="⚙️ Configuration Souris",
@@ -965,7 +1011,7 @@ class ModernGamepadUI:
             pady=10,
             command=self._open_mouse_config
         )
-        config_btn.pack()
+        config_btn.pack(side=tk.LEFT, padx=5)
 
         # Pied de page avec chemin de config
         config_path = "config/voice_config.json"
@@ -1226,12 +1272,241 @@ class ModernGamepadUI:
         else:
             self.status_label.configure(text="")
 
+    def _toggle_gamepad(self):
+        """Active ou désactive les commandes de la manette"""
+        if self.controller:
+            # Inverser l'état
+            self.controller.gamepad_enabled = not self.controller.gamepad_enabled
+
+            # Mettre à jour l'apparence du bouton et de l'indicateur
+            if self.controller.gamepad_enabled:
+                # État ACTIVÉ
+                self.toggle_btn.configure(
+                    text="✅ Manette ACTIVÉE",
+                    bg='#00d900',
+                    activebackground='#00b000'
+                )
+                self.gamepad_status_indicator.configure(
+                    text="✅ MANETTE ACTIVE",
+                    bg='#00d900'
+                )
+                print("[UI] ✅ Commandes de la manette ACTIVÉES")
+            else:
+                # État DÉSACTIVÉ
+                self.toggle_btn.configure(
+                    text="❌ Manette DÉSACTIVÉE",
+                    bg='#e94560',
+                    activebackground='#c93550'
+                )
+                self.gamepad_status_indicator.configure(
+                    text="❌ MANETTE DÉSACTIVÉE (Mode Jeu)",
+                    bg='#e94560'
+                )
+                print("[UI] ❌ Commandes de la manette DÉSACTIVÉES - Vous pouvez jouer à un jeu")
+        else:
+            print("[UI] Aucun contrôleur lié")
+
     def _open_mouse_config(self):
         """Ouvre la fenêtre de configuration de la souris"""
         if self.controller:
             MouseConfigWindow(self.root, self.controller)
         else:
             print("[UI] Aucun contrôleur lié, impossible d'ouvrir la configuration")
+
+    def _open_gamepad_image(self):
+        """Ouvre l'image de la manette dans une nouvelle fenêtre"""
+        try:
+            from PIL import Image, ImageTk
+            import os
+
+            # Chemin de l'image
+            image_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "assets", "images", "manette.png"
+            )
+
+            # Vérifier si l'image existe
+            if not os.path.exists(image_path):
+                print(f"[UI] Image introuvable : {image_path}")
+                # Afficher une fenêtre d'erreur
+                error_window = tk.Toplevel(self.root)
+                error_window.title("⚠️ Erreur")
+                error_window.geometry("400x150")
+                error_window.configure(bg=self.COLORS['bg'])
+                error_window.resizable(False, False)
+
+                error_label = tk.Label(
+                    error_window,
+                    text="❌ Image de la manette introuvable",
+                    font=('Segoe UI', 14, 'bold'),
+                    bg=self.COLORS['bg'],
+                    fg=self.COLORS['primary']
+                )
+                error_label.pack(pady=20)
+
+                path_label = tk.Label(
+                    error_window,
+                    text=f"Chemin recherché :\n{image_path}",
+                    font=('Segoe UI', 9),
+                    bg=self.COLORS['bg'],
+                    fg=self.COLORS['text_dim']
+                )
+                path_label.pack(pady=10)
+
+                ok_btn = tk.Button(
+                    error_window,
+                    text="OK",
+                    font=('Segoe UI', 10, 'bold'),
+                    bg=self.COLORS['primary'],
+                    fg='white',
+                    relief=tk.FLAT,
+                    padx=20,
+                    pady=5,
+                    command=error_window.destroy
+                )
+                ok_btn.pack(pady=10)
+                return
+
+            # Créer une nouvelle fenêtre
+            image_window = tk.Toplevel(self.root)
+            image_window.title("🎮 Schéma de la Manette")
+            image_window.configure(bg=self.COLORS['bg'])
+
+            # Fermer avec la touche Échap
+            image_window.bind('<Escape>', lambda e: image_window.destroy())
+
+            # Charger l'image
+            img = Image.open(image_path)
+
+            # Garder la résolution originale pour une qualité maximale
+            # Ne redimensionner QUE si l'image est trop grande pour l'écran
+            img_width, img_height = img.size
+
+            # Obtenir la taille de l'écran
+            screen_width = self.root.winfo_screenwidth()
+            screen_height = self.root.winfo_screenheight()
+
+            # Marges pour ne pas occuper tout l'écran
+            max_width = screen_width - 100
+            max_height = screen_height - 200
+
+            # Redimensionner UNIQUEMENT si nécessaire (garde la qualité originale)
+            if img_width > max_width or img_height > max_height:
+                ratio = min(max_width / img_width, max_height / img_height)
+                new_width = int(img_width * ratio)
+                new_height = int(img_height * ratio)
+                # NEAREST pour garder la netteté des pixels
+                img = img.resize((new_width, new_height), Image.Resampling.NEAREST)
+
+            # Convertir pour tkinter
+            photo = ImageTk.PhotoImage(img)
+
+            # Ajuster la taille de la fenêtre (+ d'espace pour le titre et le bouton)
+            window_width = img.size[0] + 40
+            window_height = img.size[1] + 180  # Augmenté pour le bouton FERMER
+
+            # Centrer la fenêtre
+            x = (screen_width - window_width) // 2
+            y = max(10, (screen_height - window_height) // 2)
+            image_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+            # Permettre le redimensionnement de la fenêtre
+            image_window.resizable(True, True)
+
+            # Titre
+            title_label = tk.Label(
+                image_window,
+                text="🎮 SCHÉMA DE LA MANETTE",
+                font=('Segoe UI', 18, 'bold'),
+                bg=self.COLORS['bg'],
+                fg=self.COLORS['success']
+            )
+            title_label.pack(pady=10)
+
+            # Frame pour l'image
+            image_frame = tk.Frame(image_window, bg=self.COLORS['bg'])
+            image_frame.pack(pady=10)
+
+            # Afficher l'image
+            image_label = tk.Label(image_frame, image=photo, bg=self.COLORS['bg'])
+            image_label.image = photo  # Garder une référence pour éviter le garbage collection
+            image_label.pack()
+
+            # Frame pour les boutons
+            button_frame = tk.Frame(image_window, bg=self.COLORS['bg'])
+            button_frame.pack(pady=15)
+
+            # Bouton Fermer (grand et visible)
+            close_btn = tk.Button(
+                button_frame,
+                text="✖ FERMER",
+                font=('Segoe UI', 14, 'bold'),
+                bg=self.COLORS['primary'],
+                fg='white',
+                activebackground='#c93550',
+                activeforeground='white',
+                relief=tk.FLAT,
+                padx=40,
+                pady=12,
+                cursor='hand2',
+                command=image_window.destroy
+            )
+            close_btn.pack()
+
+            # Texte d'aide
+            help_text = tk.Label(
+                image_window,
+                text="(Appuyez sur Échap pour fermer)",
+                font=('Segoe UI', 9),
+                bg=self.COLORS['bg'],
+                fg=self.COLORS['text_dim']
+            )
+            help_text.pack(pady=(0, 10))
+
+        except ImportError:
+            print("[UI] PIL/Pillow n'est pas installé. Installation requise : pip install Pillow")
+            # Afficher une fenêtre d'erreur
+            error_window = tk.Toplevel(self.root)
+            error_window.title("⚠️ Erreur")
+            error_window.geometry("450x150")
+            error_window.configure(bg=self.COLORS['bg'])
+            error_window.resizable(False, False)
+
+            error_label = tk.Label(
+                error_window,
+                text="❌ Module PIL/Pillow non installé",
+                font=('Segoe UI', 14, 'bold'),
+                bg=self.COLORS['bg'],
+                fg=self.COLORS['primary']
+            )
+            error_label.pack(pady=20)
+
+            info_label = tk.Label(
+                error_window,
+                text="Installez Pillow avec : pip install Pillow",
+                font=('Segoe UI', 10),
+                bg=self.COLORS['bg'],
+                fg=self.COLORS['text']
+            )
+            info_label.pack(pady=10)
+
+            ok_btn = tk.Button(
+                error_window,
+                text="OK",
+                font=('Segoe UI', 10, 'bold'),
+                bg=self.COLORS['primary'],
+                fg='white',
+                relief=tk.FLAT,
+                padx=20,
+                pady=5,
+                command=error_window.destroy
+            )
+            ok_btn.pack(pady=10)
+
+        except Exception as e:
+            print(f"[UI] Erreur lors de l'ouverture de l'image : {e}")
+            import traceback
+            traceback.print_exc()
 
     def cleanup(self):
         """Nettoie les ressources"""

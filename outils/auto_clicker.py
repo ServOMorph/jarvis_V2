@@ -14,15 +14,16 @@ from outils.image_finder import ImageFinder
 class AutoClicker:
     """Classe pour effectuer des clics automatiques sur des éléments visuels"""
 
-    def __init__(self, confidence: float = 0.8, click_delay: float = 0.2):
+    def __init__(self, confidence: float = 0.8, click_delay: float = 0.2, search_all_screens: bool = True):
         """
         Initialise le clicker automatique
 
         Args:
             confidence: Seuil de confiance pour la recherche d'image (0.0-1.0)
             click_delay: Délai avant le clic en secondes
+            search_all_screens: Si True, recherche sur tous les écrans (multi-moniteurs)
         """
-        self.image_finder = ImageFinder(confidence=confidence)
+        self.image_finder = ImageFinder(confidence=confidence, search_all_screens=search_all_screens)
         self.click_delay = click_delay
         pyautogui.FAILSAFE = True  # Sécurité : coin de l'écran pour arrêter
         pyautogui.PAUSE = 0.1  # Pause entre les actions pyautogui

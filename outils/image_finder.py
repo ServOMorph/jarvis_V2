@@ -9,20 +9,64 @@ import pyautogui
 from typing import Optional, Tuple, List
 from pathlib import Path
 import time
+from screeninfo import get_monitors
 
 
 class ImageFinder:
     """Classe pour rechercher des images sur l'écran"""
 
-    def __init__(self, confidence: float = 0.8):
+    def __init__(self, confidence: float = 0.8, search_all_screens: bool = True):
         """
         Initialise le chercheur d'image
 
         Args:
             confidence: Seuil de confiance pour la correspondance (0.0-1.0)
+            search_all_screens: Si True, recherche sur tous les écrans (multi-moniteurs)
         """
         self.confidence = confidence
+        self.search_all_screens = search_all_screens
         pyautogui.FAILSAFE = True  # Sécurité : déplacer la souris dans un coin pour arrêter
+
+        # Détecter la région globale de tous les écrans
+        self.all_screens_region = self._get_all_screens_region() if search_all_screens else None
+
+        if self.all_screens_region:
+            x, y, width, height = self.all_screens_region
+            print(f"[ImageFinder] 🖥️ Région multi-écrans détectée : {width}x{height} (x={x}, y={y})")
+
+    def _get_all_screens_region(self) -> Optional[Tuple[int, int, int, int]]:
+        """
+        Calcule la région englobant tous les écrans disponibles
+
+        Returns:
+            Tuple (x, y, width, height) de la région totale ou None si erreur
+        """
+        try:
+            monitors = get_monitors()
+
+            if not monitors:
+                print("[ImageFinder] ⚠️ Aucun moniteur détecté, utilisation de l'écran par défaut")
+                return None
+
+            # Trouver les coordonnées min/max de tous les écrans
+            min_x = min(m.x for m in monitors)
+            min_y = min(m.y for m in monitors)
+            max_x = max(m.x + m.width for m in monitors)
+            max_y = max(m.y + m.height for m in monitors)
+
+            width = max_x - min_x
+            height = max_y - min_y
+
+            # Afficher les écrans détectés
+            print(f"[ImageFinder] 📺 {len(monitors)} écran(s) détecté(s):")
+            for i, m in enumerate(monitors, 1):
+                print(f"  Écran {i}: {m.width}x{m.height} à ({m.x}, {m.y})")
+
+            return (min_x, min_y, width, height)
+
+        except Exception as e:
+            print(f"[ImageFinder] ❌ Erreur lors de la détection des écrans : {e}")
+            return None
 
     def find_image_on_screen(
         self,
@@ -35,7 +79,7 @@ class ImageFinder:
 
         Args:
             template_path: Chemin vers l'image à rechercher
-            region: Région de recherche (x, y, width, height) ou None pour tout l'écran
+            region: Région de recherche (x, y, width, height) ou None pour utiliser tous les écrans
             grayscale: Rechercher en niveaux de gris pour plus de rapidité
 
         Returns:
@@ -47,7 +91,45 @@ class ImageFinder:
                 print(f"❌ Image introuvable : {template_path}")
                 return None
 
-            # Chercher l'image sur l'écran
+            # Si aucune région n'est spécifiée et que search_all_screens est activé,
+            # chercher sur chaque écran individuellement
+            if region is None and self.search_all_screens:
+                try:
+                    monitors = get_monitors()
+                    print(f"[ImageFinder DEBUG] Recherche sur {len(monitors)} écran(s)...")
+
+                    for i, monitor in enumerate(monitors, 1):
+                        # Définir la région pour cet écran spécifique
+                        screen_region = (monitor.x, monitor.y, monitor.width, monitor.height)
+                        print(f"[ImageFinder DEBUG] Écran {i}: région={screen_region}")
+
+                        # Chercher sur cet écran
+                        location = pyautogui.locateOnScreen(
+                            template_path,
+                            confidence=self.confidence,
+                            region=screen_region,
+                            grayscale=grayscale
+                        )
+
+                        if location:
+                            # Image trouvée sur cet écran
+                            print(f"[ImageFinder DEBUG] ✅ Image trouvée sur écran {i} à ({location.left}, {location.top})")
+                            return (location.left, location.top, location.width, location.height)
+                        else:
+                            print(f"[ImageFinder DEBUG] ❌ Image non trouvée sur écran {i}")
+
+                    # Image non trouvée sur aucun écran
+                    print(f"[ImageFinder DEBUG] Image non trouvée sur aucun des {len(monitors)} écrans")
+                    return None
+
+                except Exception as e:
+                    # Si la recherche multi-écrans échoue, fallback sur la méthode standard
+                    print(f"[ImageFinder DEBUG] Erreur multi-écrans: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    pass
+
+            # Méthode standard (région spécifiée ou search_all_screens désactivé)
             location = pyautogui.locateOnScreen(
                 template_path,
                 confidence=self.confidence,
@@ -56,10 +138,9 @@ class ImageFinder:
             )
 
             if location:
-                # Image trouvée, pas de log ici (sera géré par le niveau supérieur)
+                # Image trouvée
                 return (location.left, location.top, location.width, location.height)
             else:
-                # Pas de log quand l'image n'est pas trouvée
                 return None
 
         except Exception:
@@ -77,7 +158,7 @@ class ImageFinder:
 
         Args:
             template_path: Chemin vers l'image à rechercher
-            region: Région de recherche (x, y, width, height) ou None pour tout l'écran
+            region: Région de recherche (x, y, width, height) ou None pour utiliser tous les écrans
             grayscale: Rechercher en niveaux de gris pour plus de rapidité
 
         Returns:
@@ -89,7 +170,40 @@ class ImageFinder:
                 print(f"❌ Image introuvable : {template_path}")
                 return []
 
-            # Chercher toutes les occurrences
+            all_locations = []
+
+            # Si aucune région n'est spécifiée et que search_all_screens est activé,
+            # chercher sur chaque écran individuellement
+            if region is None and self.search_all_screens:
+                try:
+                    monitors = get_monitors()
+                    for monitor in monitors:
+                        # Définir la région pour cet écran spécifique
+                        screen_region = (monitor.x, monitor.y, monitor.width, monitor.height)
+
+                        # Chercher toutes les occurrences sur cet écran
+                        locations = list(pyautogui.locateAllOnScreen(
+                            template_path,
+                            confidence=self.confidence,
+                            region=screen_region,
+                            grayscale=grayscale
+                        ))
+
+                        # Ajouter les résultats
+                        all_locations.extend([(loc.left, loc.top, loc.width, loc.height) for loc in locations])
+
+                    if all_locations:
+                        print(f"✅ {len(all_locations)} occurrence(s) trouvée(s)")
+                        return all_locations
+                    else:
+                        print(f"⚠️  Aucune occurrence trouvée")
+                        return []
+
+                except Exception:
+                    # Si la recherche multi-écrans échoue, fallback sur la méthode standard
+                    pass
+
+            # Méthode standard (région spécifiée ou search_all_screens désactivé)
             locations = list(pyautogui.locateAllOnScreen(
                 template_path,
                 confidence=self.confidence,
