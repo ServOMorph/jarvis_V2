@@ -16,6 +16,7 @@ from outils.auto_clicker import AutoClicker
 from typing import Optional
 import time
 import threading
+import pyautogui
 
 
 class GamepadVoiceController(GamepadController):
@@ -58,6 +59,13 @@ class GamepadVoiceController(GamepadController):
         # État du bouton 10 (commandes vocales spéciales)
         self.button_10_pressed = False
 
+        # État du bouton 0 (maintien du clic gauche)
+        self.button_0_holding = False
+
+        # État de la combinaison bouton 3 + 4 (Win + Tab)
+        self.button_3_pressed_state = False
+        self.button_4_pressed_state = False
+
         # Chemin de l'image yes.png
         self.yes_image_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -97,9 +105,6 @@ class GamepadVoiceController(GamepadController):
         Args:
             text: Texte reconnu depuis la voix
         """
-        import pyautogui
-        import time
-
         text_lower = text.lower().strip()
 
         print(f"[COMMANDE SPÉCIALE] Analyse de : '{text}'")
@@ -168,7 +173,7 @@ class GamepadVoiceController(GamepadController):
 
     def handle_button(self, button_id: int, pressed: bool):
         """
-        Surcharge pour gérer les boutons spéciaux (bouton 9, 3, 5, 10, 13)
+        Surcharge pour gérer les boutons spéciaux (bouton 0, 3, 4, 5, 9, 10, 13)
 
         Args:
             button_id: ID du bouton
@@ -178,8 +183,35 @@ class GamepadVoiceController(GamepadController):
         if pressed:
             print(f"[DEBUG] Bouton {button_id} pressé")
 
+        # Gérer l'état des boutons 3 et 4 pour la combinaison Win + Tab
+        if button_id == 3:
+            self.button_3_pressed_state = pressed
+        elif button_id == 4:
+            self.button_4_pressed_state = pressed
+
+        # Si boutons 3 et 4 pressés en même temps : Win + Tab
+        if self.button_3_pressed_state and self.button_4_pressed_state and pressed:
+            if button_id in [3, 4]:
+                print("[COMBINAISON] 🪟 Win + Tab")
+                pyautogui.hotkey('win', 'tab')
+                return
+
+        # Bouton 0 : Clic gauche maintenu (comme drag)
+        if button_id == 0:
+            if pressed and not self.button_0_holding:
+                # Maintenir le clic gauche
+                self.button_0_holding = True
+                pyautogui.mouseDown(button='left')
+                print("[BOUTON 0] 🖱️ Clic gauche maintenu")
+            elif not pressed and self.button_0_holding:
+                # Relâcher le clic gauche
+                self.button_0_holding = False
+                pyautogui.mouseUp(button='left')
+                print("[BOUTON 0] 🖱️ Clic gauche relâché")
+            return
+
         # Bouton 10 : Commandes vocales spéciales
-        if button_id == 10:
+        elif button_id == 10:
             if pressed and not self.button_10_pressed:
                 # Bouton pressé : démarrer l'enregistrement vocal
                 self.button_10_pressed = True
@@ -232,9 +264,6 @@ class GamepadVoiceController(GamepadController):
                 self.voice_paste.config.auto_paste = original_auto_paste
 
                 if text:
-                    import pyautogui
-                    import time
-
                     print(f"[BOUTON 13] ✅ Texte reconnu : {text}")
                     print("[BOUTON 13] 🔍 Ouverture de la recherche Windows...")
 
@@ -299,16 +328,18 @@ class GamepadVoiceController(GamepadController):
                 del self.button_states[button_id]
 
         # Bouton 3 : Dictée vocale (maintenir pour enregistrer)
+        # Si combinaison 3+4 déjà traitée, ne pas exécuter la dictée
         elif button_id == 3:
-            if pressed and not self.voice_button_pressed:
-                # Bouton pressé : démarrer l'enregistrement
-                self.voice_button_pressed = True
-                self.voice_paste.start_voice_input()
+            if not self.button_4_pressed_state:
+                if pressed and not self.voice_button_pressed:
+                    # Bouton pressé : démarrer l'enregistrement
+                    self.voice_button_pressed = True
+                    self.voice_paste.start_voice_input()
 
-            elif not pressed and self.voice_button_pressed:
-                # Bouton relâché : arrêter et reconnaître
-                self.voice_button_pressed = False
-                self.voice_paste.stop_voice_input()
+                elif not pressed and self.voice_button_pressed:
+                    # Bouton relâché : arrêter et reconnaître
+                    self.voice_button_pressed = False
+                    self.voice_paste.stop_voice_input()
 
         # Bouton 5 (RB/R1) : Mode boost de la souris (maintenir)
         elif button_id == 5:
@@ -329,6 +360,11 @@ class GamepadVoiceController(GamepadController):
 
     def cleanup(self):
         """Nettoie les ressources (manette + voix)"""
+        # Relâcher le clic gauche si maintenu
+        if self.button_0_holding:
+            pyautogui.mouseUp(button='left')
+            self.button_0_holding = False
+
         self.voice_paste.cleanup()
         super().disconnect()
 
@@ -338,11 +374,12 @@ def get_voice_gamepad_config() -> GamepadConfig:
     Retourne une configuration par défaut avec le bouton 3 pour la voix
 
     Mapping :
-    - Bouton 0 (A/X) : Clic gauche
+    - Bouton 0 (A/X) : Clic gauche maintenu (drag)
     - Bouton 1 (B/O) : Entrée
     - Bouton 2 (X/□) : Clic droit
     - Bouton 3 (Y/△) : 🎤 DICTÉE VOCALE (maintenir)
     - Bouton 4 (LB/L1) : Alt+Tab
+    - Bouton 3 + 4 : Win + Tab (bureaux virtuels)
     - Bouton 5 (RB/R1) : Ctrl+W
     - Bouton 6 (Back) : Volume -
     - Bouton 7 (Start) : Volume +
@@ -355,7 +392,7 @@ def get_voice_gamepad_config() -> GamepadConfig:
     """
     return GamepadConfig(
         button_mappings={
-            0: GamepadActions.mouse_click('left'),
+            # Bouton 0 géré spécialement pour le clic maintenu
             1: GamepadActions.key_press('enter'),
             2: GamepadActions.mouse_click('right'),
             # Bouton 3 géré spécialement pour la voix
@@ -398,11 +435,12 @@ if __name__ == "__main__":
     # Connecter la manette
     if controller.connect():
         print("\n=== CONFIGURATION ===")
-        print("Bouton 0 (A/X) : Clic gauche")
+        print("Bouton 0 (A/X) : Clic gauche maintenu (drag)")
         print("Bouton 1 (B/O) : Entrée")
         print("Bouton 2 (X/□) : Clic droit")
         print("Bouton 3 (Y/△) : 🎤 DICTÉE VOCALE (maintenir le bouton)")
         print("Bouton 4 (LB/L1) : Alt+Tab")
+        print("Bouton 3 + 4 : Win + Tab (bureaux virtuels)")
         print("Bouton 5 (RB/R1) : Ctrl+W (fermer)")
         print("Bouton 6 (Back) : Volume -")
         print("Bouton 7 (Start) : Volume +")
