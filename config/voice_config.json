@@ -49,11 +49,6 @@
       "params": null,
       "description": "Bureau virtuel droite (Ctrl+Win+Droite)"
     },
-    "8": {
-      "action": "key_combination_ctrl_z",
-      "params": null,
-      "description": "Ctrl+Z (annuler)"
-    },
     "9": {
       "action": "toggle_continuous_click_yes",
       "params": {
@@ -61,11 +56,6 @@
         "search_interval": 0.3
       },
       "description": "Toggle recherche/clic continu yes.png (appuyer pour démarrer/arrêter)"
-    },
-    "10": {
-      "action": "special_voice_commands",
-      "params": null,
-      "description": "Commandes vocales spéciales (maintenir et parler)"
     }
   }
 }

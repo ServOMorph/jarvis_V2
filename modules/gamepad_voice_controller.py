@@ -383,7 +383,6 @@ def get_voice_gamepad_config() -> GamepadConfig:
     - Bouton 5 (RB/R1) : Ctrl+W
     - Bouton 6 (Back) : Volume -
     - Bouton 7 (Start) : Volume +
-    - Bouton 8 (L3) : Ctrl+Z (annuler)
     - Bouton 9 (R3) : 🔍 Toggle recherche/clic yes.png
     - D-pad : Touches fléchées du clavier (↑, ↓, ←, →)
     - Joystick gauche : Déplacer la souris
@@ -400,7 +399,6 @@ def get_voice_gamepad_config() -> GamepadConfig:
             # Bouton 5 géré spécialement pour le mode boost (pas dans le mapping)
             6: GamepadActions.key_press('volumedown'),
             7: GamepadActions.key_press('volumeup'),
-            8: GamepadActions.key_combination('ctrl', 'z'),
             # Bouton 9 géré spécialement pour la recherche yes.png
         },
         axis_mappings={
@@ -444,7 +442,6 @@ if __name__ == "__main__":
         print("Bouton 5 (RB/R1) : Ctrl+W (fermer)")
         print("Bouton 6 (Back) : Volume -")
         print("Bouton 7 (Start) : Volume +")
-        print("Bouton 8 (L3) : Ctrl+Z (annuler)")
         print("Bouton 9 (R3) : 🔍 Toggle recherche/clic yes.png")
         print("\nD-pad : Touches fléchées (↑, ↓, ←, →)")
         print("\nJoystick gauche : Déplacer la souris")
