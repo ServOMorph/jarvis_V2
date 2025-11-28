@@ -62,7 +62,10 @@ class GamepadVoiceController(GamepadController):
         # État du bouton 0 (maintien du clic gauche)
         self.button_0_holding = False
 
-        # État de la combinaison bouton 3 + 4 (Win + Tab)
+        # États des boutons pour combinaisons
+        self.button_0_pressed_state = False
+        self.button_1_pressed_state = False
+        self.button_2_pressed_state = False
         self.button_3_pressed_state = False
         self.button_4_pressed_state = False
 
@@ -183,17 +186,42 @@ class GamepadVoiceController(GamepadController):
         if pressed:
             print(f"[DEBUG] Bouton {button_id} pressé")
 
-        # Gérer l'état des boutons 3 et 4 pour la combinaison Win + Tab
-        if button_id == 3:
+        # Gérer l'état des boutons pour les combinaisons
+        if button_id == 0:
+            self.button_0_pressed_state = pressed
+        elif button_id == 1:
+            self.button_1_pressed_state = pressed
+        elif button_id == 2:
+            self.button_2_pressed_state = pressed
+        elif button_id == 3:
             self.button_3_pressed_state = pressed
         elif button_id == 4:
             self.button_4_pressed_state = pressed
 
-        # Si boutons 3 et 4 pressés en même temps : Win + Tab
-        if self.button_3_pressed_state and self.button_4_pressed_state and pressed:
-            if button_id in [3, 4]:
-                print("[COMBINAISON] 🪟 Win + Tab")
-                pyautogui.hotkey('win', 'tab')
+        # Bouton 4 comme modificateur : combinaisons Ctrl
+        if self.button_4_pressed_state and pressed:
+            # Bouton 4 + 0 : Ctrl+Z
+            if button_id == 0:
+                print("[COMBINAISON] ↶ Ctrl+Z")
+                pyautogui.hotkey('ctrl', 'z')
+                return
+            # Bouton 4 + 3 : Ctrl+A
+            elif button_id == 3:
+                print("[COMBINAISON] 📄 Ctrl+A")
+                pyautogui.hotkey('ctrl', 'a')
+                return
+            # Bouton 4 + 2 : Ctrl+C
+            elif button_id == 2:
+                print("[COMBINAISON] 📋 Ctrl+C")
+                pyautogui.hotkey('ctrl', 'c')
+                return
+            # Bouton 4 + 1 : Ctrl+V
+            elif button_id == 1:
+                print("[COMBINAISON] 📄 Ctrl+V")
+                pyautogui.hotkey('ctrl', 'v')
+                return
+            # Bouton 4 pressé seul : ne rien faire
+            elif button_id == 4:
                 return
 
         # Bouton 0 : Clic gauche maintenu (comme drag)
@@ -378,7 +406,11 @@ def get_voice_gamepad_config() -> GamepadConfig:
     - Bouton 1 (B/O) : Entrée
     - Bouton 2 (X/□) : Clic droit
     - Bouton 3 (Y/△) : 🎤 DICTÉE VOCALE (maintenir)
-    - Bouton 4 (LB/L1) : Alt+Tab
+    - Bouton 4 (LB/L1) : Modificateur (comme Ctrl/Win)
+    - Bouton 4 + 0 : Ctrl+Z
+    - Bouton 4 + 3 : Ctrl+A
+    - Bouton 4 + 2 : Ctrl+C
+    - Bouton 4 + 1 : Ctrl+V
     - Bouton 3 + 4 : Win + Tab (bureaux virtuels)
     - Bouton 5 (RB/R1) : Ctrl+W
     - Bouton 6 (Back) : Volume -
@@ -391,11 +423,7 @@ def get_voice_gamepad_config() -> GamepadConfig:
     """
     return GamepadConfig(
         button_mappings={
-            # Bouton 0 géré spécialement pour le clic maintenu
-            1: GamepadActions.key_press('enter'),
-            2: GamepadActions.mouse_click('right'),
-            # Bouton 3 géré spécialement pour la voix
-            4: GamepadActions.key_combination('alt', 'tab'),
+            # Boutons 0-4 gérés spécialement pour les combinaisons
             # Bouton 5 géré spécialement pour le mode boost (pas dans le mapping)
             6: GamepadActions.key_press('volumedown'),
             7: GamepadActions.key_press('volumeup'),
@@ -437,7 +465,11 @@ if __name__ == "__main__":
         print("Bouton 1 (B/O) : Entrée")
         print("Bouton 2 (X/□) : Clic droit")
         print("Bouton 3 (Y/△) : 🎤 DICTÉE VOCALE (maintenir le bouton)")
-        print("Bouton 4 (LB/L1) : Alt+Tab")
+        print("Bouton 4 (LB/L1) : Modificateur (comme Ctrl/Win)")
+        print("Bouton 4 + 0 : Ctrl+Z")
+        print("Bouton 4 + 3 : Ctrl+A")
+        print("Bouton 4 + 2 : Ctrl+C")
+        print("Bouton 4 + 1 : Ctrl+V")
         print("Bouton 3 + 4 : Win + Tab (bureaux virtuels)")
         print("Bouton 5 (RB/R1) : Ctrl+W (fermer)")
         print("Bouton 6 (Back) : Volume -")
