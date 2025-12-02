@@ -94,10 +94,8 @@ class ImageFinder:
 
             with mss.mss() as sct:
                 monitors = sct.monitors[1:]
-                print(f"[DEBUG] Recherche sur {len(monitors)} écran(s)")
 
                 for i, monitor in enumerate(monitors, 1):
-                    print(f"[DEBUG] Écran {i}: {monitor['width']}x{monitor['height']} à ({monitor['left']}, {monitor['top']})")
                     screenshot = sct.grab(monitor)
                     img = np.array(screenshot)
                     img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
@@ -108,15 +106,11 @@ class ImageFinder:
                     result = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
                     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
 
-                    print(f"[DEBUG] Écran {i} - Confiance max: {max_val:.3f} (seuil: {self.confidence})")
-
                     if max_val >= self.confidence:
                         x = monitor['left'] + max_loc[0]
                         y = monitor['top'] + max_loc[1]
-                        print(f"[DEBUG] ✅ Image trouvée sur écran {i} à ({x}, {y})")
                         return (x, y, template_w, template_h)
 
-                print(f"[DEBUG] ❌ Image non trouvée sur aucun écran")
                 return None
 
         except Exception as e:

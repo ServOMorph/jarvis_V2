@@ -386,6 +386,44 @@ class GamepadVoiceController(GamepadController):
             print(f"[DEBUG] Délégation du bouton {button_id} à super().handle_button()")
             super().handle_button(button_id, pressed)
 
+    def handle_hat(self, hat_id: int, value: tuple):
+        """
+        Surcharge pour gérer le D-pad avec modificateur bouton 4
+
+        Args:
+            hat_id: ID du chapeau
+            value: Tuple (x, y) avec -1, 0 ou 1
+        """
+        # Ignorer si la manette est désactivée
+        if not self.gamepad_enabled:
+            return
+
+        x, y = value
+
+        # Debug
+        print(f"[DEBUG DPAD] hat_id={hat_id}, value={value}, button_4_state={self.button_4_pressed_state}")
+
+        # Si bouton 4 pressé : Win + flèches directionnelles (déplacement fenêtres)
+        if self.button_4_pressed_state:
+            # Gérer l'axe horizontal
+            if x == -1:
+                print("[COMBINAISON] 🪟 Win+← (fenêtre à gauche)")
+                pyautogui.hotkey('win', 'left')
+            elif x == 1:
+                print("[COMBINAISON] 🪟 Win+→ (fenêtre à droite)")
+                pyautogui.hotkey('win', 'right')
+
+            # Gérer l'axe vertical
+            if y == 1:
+                print("[COMBINAISON] 🪟 Win+↑ (maximiser)")
+                pyautogui.hotkey('win', 'up')
+            elif y == -1:
+                print("[COMBINAISON] 🪟 Win+↓ (minimiser)")
+                pyautogui.hotkey('win', 'down')
+        else:
+            # Comportement normal : déléguer à la classe parente
+            super().handle_hat(hat_id, value)
+
     def cleanup(self):
         """Nettoie les ressources (manette + voix)"""
         # Relâcher le clic gauche si maintenu
@@ -411,12 +449,14 @@ def get_voice_gamepad_config() -> GamepadConfig:
     - Bouton 4 + 3 : Ctrl+A
     - Bouton 4 + 2 : Ctrl+C
     - Bouton 4 + 1 : Ctrl+V
+    - Bouton 4 + D-pad : Win + flèches (déplacer/redimensionner fenêtres)
     - Bouton 3 + 4 : Win + Tab (bureaux virtuels)
     - Bouton 5 (RB/R1) : Ctrl+W
     - Bouton 6 (Back) : Volume -
     - Bouton 7 (Start) : Volume +
     - Bouton 9 (R3) : 🔍 Toggle recherche/clic yes.png
     - D-pad : Touches fléchées du clavier (↑, ↓, ←, →)
+    - D-pad + Bouton 4 : Win + fléchées (déplacement fenêtres)
     - Joystick gauche : Déplacer la souris
     - Joystick droit (X) : Scroll horizontal
     - Joystick droit (Y) : Scroll vertical
@@ -470,12 +510,14 @@ if __name__ == "__main__":
         print("Bouton 4 + 3 : Ctrl+A")
         print("Bouton 4 + 2 : Ctrl+C")
         print("Bouton 4 + 1 : Ctrl+V")
+        print("Bouton 4 + D-pad : Win + flèches (déplacer fenêtres)")
         print("Bouton 3 + 4 : Win + Tab (bureaux virtuels)")
         print("Bouton 5 (RB/R1) : Ctrl+W (fermer)")
         print("Bouton 6 (Back) : Volume -")
         print("Bouton 7 (Start) : Volume +")
         print("Bouton 9 (R3) : 🔍 Toggle recherche/clic yes.png")
         print("\nD-pad : Touches fléchées (↑, ↓, ←, →)")
+        print("D-pad + Bouton 4 : Win + flèches (déplacement fenêtres)")
         print("\nJoystick gauche : Déplacer la souris")
         print("Joystick droit (X) : Scroll horizontal (gauche/droite)")
         print("Joystick droit (Y) : Scroll vertical (haut/bas)")
