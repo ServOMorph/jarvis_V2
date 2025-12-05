@@ -69,6 +69,9 @@ class GamepadVoiceController(GamepadController):
         self.button_3_pressed_state = False
         self.button_4_pressed_state = False
 
+        # État de la touche Windows (maintenue avec bouton 4)
+        self.win_key_held = False
+
         # Chemin de l'image yes.png
         self.yes_image_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -197,6 +200,11 @@ class GamepadVoiceController(GamepadController):
             self.button_3_pressed_state = pressed
         elif button_id == 4:
             self.button_4_pressed_state = pressed
+            # Relâcher Windows si le bouton 4 est relâché
+            if not pressed and self.win_key_held:
+                self.win_key_held = False
+                pyautogui.keyUp('win')
+                print("[BOUTON 4] 🪟 Touche Windows relâchée")
 
         # Bouton 4 comme modificateur : combinaisons Ctrl
         if self.button_4_pressed_state and pressed:
@@ -403,23 +411,29 @@ class GamepadVoiceController(GamepadController):
         # Debug
         print(f"[DEBUG DPAD] hat_id={hat_id}, value={value}, button_4_state={self.button_4_pressed_state}")
 
-        # Si bouton 4 pressé : Win + flèches directionnelles (déplacement fenêtres)
+        # Si bouton 4 pressé : flèches directionnelles avec Win maintenu
         if self.button_4_pressed_state:
+            # Maintenir Windows à la première utilisation du D-pad
+            if not self.win_key_held:
+                self.win_key_held = True
+                pyautogui.keyDown('win')
+                print("[BOUTON 4 + DPAD] 🪟 Touche Windows maintenue")
+
             # Gérer l'axe horizontal
             if x == -1:
                 print("[COMBINAISON] 🪟 Win+← (fenêtre à gauche)")
-                pyautogui.hotkey('win', 'left')
+                pyautogui.press('left')
             elif x == 1:
                 print("[COMBINAISON] 🪟 Win+→ (fenêtre à droite)")
-                pyautogui.hotkey('win', 'right')
+                pyautogui.press('right')
 
             # Gérer l'axe vertical
             if y == 1:
                 print("[COMBINAISON] 🪟 Win+↑ (maximiser)")
-                pyautogui.hotkey('win', 'up')
+                pyautogui.press('up')
             elif y == -1:
                 print("[COMBINAISON] 🪟 Win+↓ (minimiser)")
-                pyautogui.hotkey('win', 'down')
+                pyautogui.press('down')
         else:
             # Comportement normal : déléguer à la classe parente
             super().handle_hat(hat_id, value)
@@ -430,6 +444,11 @@ class GamepadVoiceController(GamepadController):
         if self.button_0_holding:
             pyautogui.mouseUp(button='left')
             self.button_0_holding = False
+
+        # Relâcher la touche Windows si maintenue
+        if self.win_key_held:
+            pyautogui.keyUp('win')
+            self.win_key_held = False
 
         self.voice_paste.cleanup()
         super().disconnect()
@@ -454,6 +473,7 @@ def get_voice_gamepad_config() -> GamepadConfig:
     - Bouton 5 (RB/R1) : Ctrl+W
     - Bouton 6 (Back) : Volume -
     - Bouton 7 (Start) : Volume +
+    - Bouton 8 (L3) : Échap (Esc)
     - Bouton 9 (R3) : 🔍 Toggle recherche/clic yes.png
     - D-pad : Touches fléchées du clavier (↑, ↓, ←, →)
     - D-pad + Bouton 4 : Win + fléchées (déplacement fenêtres)
@@ -467,6 +487,7 @@ def get_voice_gamepad_config() -> GamepadConfig:
             # Bouton 5 géré spécialement pour le mode boost (pas dans le mapping)
             6: GamepadActions.key_press('volumedown'),
             7: GamepadActions.key_press('volumeup'),
+            8: GamepadActions.key_press('esc'),
             # Bouton 9 géré spécialement pour la recherche yes.png
         },
         axis_mappings={
@@ -515,6 +536,7 @@ if __name__ == "__main__":
         print("Bouton 5 (RB/R1) : Ctrl+W (fermer)")
         print("Bouton 6 (Back) : Volume -")
         print("Bouton 7 (Start) : Volume +")
+        print("Bouton 8 (L3) : Échap (Esc)")
         print("Bouton 9 (R3) : 🔍 Toggle recherche/clic yes.png")
         print("\nD-pad : Touches fléchées (↑, ↓, ←, →)")
         print("D-pad + Bouton 4 : Win + flèches (déplacement fenêtres)")

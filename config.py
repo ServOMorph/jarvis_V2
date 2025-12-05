@@ -12,15 +12,15 @@ class MouseConfig:
 
     # Sensibilité du mouvement (plus élevé = plus rapide)
     # Valeurs recommandées : 20-50 pour une utilisation normale
-    SENSITIVITY = 5.0
+    SENSITIVITY = 8.0
 
     # Sensibilité maximale (lors d'une inclinaison complète du joystick)
-    MAX_SENSITIVITY = 10.0
+    MAX_SENSITIVITY = 21.0
 
     # Accélération du curseur (courbe exponentielle)
     # 1.0 = linéaire, >1.0 = accélération progressive
     # Valeurs recommandées : 1.5-2.5
-    ACCELERATION_CURVE = 3.0
+    ACCELERATION_CURVE = 2.4
 
     # Intervalle de mise à jour en secondes (plus petit = plus fluide)
     # Valeurs recommandées : 0.005-0.016 (200Hz à 60Hz)
@@ -38,7 +38,7 @@ class MouseConfig:
     # Mode précision (quand le bouton RB/R1 est maintenu)
     # Diviseur de vitesse pour le mode précision
     # Plus élevé = plus lent et précis
-    PRECISION_DIVIDER =10.0  # Divise la vitesse par 3
+    PRECISION_DIVIDER =7.5  # Divise la vitesse par 3
 
 
 # ============================================================================
@@ -49,10 +49,10 @@ class ScrollConfig:
     """Configuration du scroll avec le joystick droit"""
 
     # Sensibilité du scroll (augmentée pour plus de réactivité)
-    SENSITIVITY = 6010.0
+    SENSITIVITY = 310.0
 
     # Accélération du scroll (réduite pour un contrôle plus linéaire)
-    ACCELERATION_CURVE = 2.0
+    ACCELERATION_CURVE = 3.0
 
     # Zone morte pour le scroll (réduite pour plus de sensibilité)
     DEADZONE = 0.1

@@ -49,6 +49,11 @@
       "params": null,
       "description": "Bureau virtuel droite (Ctrl+Win+Droite)"
     },
+    "8": {
+      "action": "key_press_esc",
+      "params": null,
+      "description": "Échap (Esc)"
+    },
     "9": {
       "action": "toggle_continuous_click_yes",
       "params": {

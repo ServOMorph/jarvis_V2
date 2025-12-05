@@ -11,6 +11,23 @@ from typing import Dict, Optional
 import sys
 import os
 
+
+class StdoutRedirector:
+    """Redirige stdout vers un widget Text"""
+
+    def __init__(self, text_widget):
+        self.text_widget = text_widget
+
+    def write(self, message):
+        if message.strip():
+            self.text_widget.configure(state=tk.NORMAL)
+            self.text_widget.insert(tk.END, message)
+            self.text_widget.see(tk.END)
+            self.text_widget.configure(state=tk.DISABLED)
+
+    def flush(self):
+        pass
+
 # Ajouter le dossier parent au path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -741,14 +758,14 @@ class ModernGamepadUI:
         self._parse_config()
 
         # Configuration de la fenêtre
-        window_width = 900
-        window_height = max(500, min(800, 200 + len(self.button_controls) * 120))
+        window_width = 960
+        window_height = 1080
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
         self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
-        self.root.resizable(False, False)
+        self.root.resizable(True, True)
 
         # Variables pour stocker les widgets des boutons
         self.button_indicators: Dict[int, tk.Frame] = {}
@@ -768,8 +785,16 @@ class ModernGamepadUI:
         # Référence au contrôleur principal pour synchronisation
         self.controller = None
 
+        # Sauvegarder les stdout/stderr originaux
+        self._original_stdout = sys.stdout
+        self._original_stderr = sys.stderr
+
         # Créer l'interface
         self._create_ui()
+
+        # Rediriger stdout vers la console
+        sys.stdout = StdoutRedirector(self.console_text)
+        sys.stderr = StdoutRedirector(self.console_text)
 
         # Initialiser pygame et la manette
         self._init_gamepad()
@@ -879,73 +904,80 @@ class ModernGamepadUI:
         )
         self.gamepad_status_indicator.pack(pady=(10, 0))
 
-        # Zone de défilement
-        main_container = tk.Frame(self.root, bg=self.COLORS['bg'])
-        main_container.pack(fill=tk.BOTH, expand=True, padx=30, pady=10)
+        # Affichage de l'image de la manette
+        try:
+            from PIL import Image, ImageTk
+            import os
 
-        # Canvas pour le scroll
-        canvas = tk.Canvas(main_container, bg=self.COLORS['bg'], highlightthickness=0)
-        scrollbar = ttk.Scrollbar(main_container, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg=self.COLORS['bg'])
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Section Boutons (seulement si des boutons sont configurés)
-        if self.button_controls:
-            buttons_label = tk.Label(
-                scrollable_frame,
-                text="BOUTONS CONFIGURÉS",
-                font=('Segoe UI', 16, 'bold'),
-                bg=self.COLORS['bg'],
-                fg=self.COLORS['text']
+            # Chemin de l'image
+            image_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "assets", "images", "manette.png"
             )
-            buttons_label.pack(anchor='w', pady=(10, 15))
 
-            # Grille de boutons
-            buttons_grid = tk.Frame(scrollable_frame, bg=self.COLORS['bg'])
-            buttons_grid.pack(fill=tk.X, pady=(0, 20))
+            if os.path.exists(image_path):
+                # Frame pour l'image
+                image_frame = tk.Frame(self.root, bg=self.COLORS['bg'])
+                image_frame.pack(fill=tk.BOTH, expand=True, padx=30, pady=10)
 
-            # Créer les cartes de boutons (2 colonnes)
-            for i, (btn_id, btn_info) in enumerate(self.button_controls.items()):
-                row = i // 2
-                col = i % 2
-                self._create_button_card(buttons_grid, btn_id, btn_info, row, col)
+                # Charger l'image
+                img = Image.open(image_path)
 
-        # Section Axes (Joysticks) - seulement si configurés
-        if self.axis_controls:
-            axes_label = tk.Label(
-                scrollable_frame,
-                text="JOYSTICKS & AXES",
-                font=('Segoe UI', 16, 'bold'),
+                # Obtenir la taille de l'écran
+                screen_width = self.root.winfo_screenwidth()
+                screen_height = self.root.winfo_screenheight()
+
+                # Marges pour ne pas occuper tout l'écran
+                max_width = 800
+                max_height = 600
+
+                # Redimensionner si nécessaire
+                img_width, img_height = img.size
+                if img_width > max_width or img_height > max_height:
+                    ratio = min(max_width / img_width, max_height / img_height)
+                    new_width = int(img_width * ratio)
+                    new_height = int(img_height * ratio)
+                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+                # Convertir pour tkinter
+                photo = ImageTk.PhotoImage(img)
+
+                # Afficher l'image
+                image_label = tk.Label(image_frame, image=photo, bg=self.COLORS['bg'])
+                image_label.image = photo
+                image_label.pack()
+            else:
+                # Message d'erreur si l'image n'existe pas
+                error_label = tk.Label(
+                    self.root,
+                    text="❌ Image de la manette introuvable",
+                    font=('Segoe UI', 14, 'bold'),
+                    bg=self.COLORS['bg'],
+                    fg=self.COLORS['primary']
+                )
+                error_label.pack(pady=50)
+
+        except ImportError:
+            # Message si PIL n'est pas installé
+            error_label = tk.Label(
+                self.root,
+                text="❌ Module PIL/Pillow non installé\nInstallez avec : pip install Pillow",
+                font=('Segoe UI', 12),
                 bg=self.COLORS['bg'],
-                fg=self.COLORS['text']
+                fg=self.COLORS['primary']
             )
-            axes_label.pack(anchor='w', pady=(20, 15))
+            error_label.pack(pady=50)
 
-            # Cartes des axes
-            for axis_id, axis_info in self.axis_controls.items():
-                self._create_axis_card(scrollable_frame, axis_id, axis_info)
-
-        # Message si aucune configuration
-        if not self.button_controls and not self.axis_controls:
-            empty_label = tk.Label(
-                scrollable_frame,
-                text="Aucun contrôle configuré dans voice_config.json",
-                font=('Segoe UI', 14),
+        except Exception as e:
+            # Message d'erreur générique
+            error_label = tk.Label(
+                self.root,
+                text=f"❌ Erreur lors du chargement de l'image : {e}",
+                font=('Segoe UI', 12),
                 bg=self.COLORS['bg'],
-                fg=self.COLORS['text_dim']
+                fg=self.COLORS['primary']
             )
-            empty_label.pack(pady=50)
-
-        # Packing du canvas
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+            error_label.pack(pady=50)
 
         # Zone de statut pour les modes actifs
         status_container = tk.Frame(self.root, bg=self.COLORS['bg'])
@@ -981,22 +1013,6 @@ class ModernGamepadUI:
         )
         self.toggle_btn.pack(side=tk.LEFT, padx=5)
 
-        # Bouton Affichage Contrôle
-        display_btn = tk.Button(
-            config_button_frame,
-            text="🎮 Affichage Contrôle",
-            font=('Segoe UI', 11, 'bold'),
-            bg=self.COLORS['primary'],
-            fg=self.COLORS['text'],
-            activebackground='#c93550',
-            activeforeground=self.COLORS['text'],
-            relief=tk.FLAT,
-            padx=25,
-            pady=10,
-            command=self._open_gamepad_image
-        )
-        display_btn.pack(side=tk.LEFT, padx=5)
-
         # Bouton Configuration Souris
         config_btn = tk.Button(
             config_button_frame,
@@ -1013,6 +1029,42 @@ class ModernGamepadUI:
         )
         config_btn.pack(side=tk.LEFT, padx=5)
 
+        # Console de logs en temps réel
+        console_frame = tk.Frame(self.root, bg=self.COLORS['bg'])
+        console_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=False, padx=30, pady=(10, 10))
+
+        console_label = tk.Label(
+            console_frame,
+            text="📋 CONSOLE",
+            font=('Segoe UI', 11, 'bold'),
+            bg=self.COLORS['bg'],
+            fg=self.COLORS['success']
+        )
+        console_label.pack(anchor='w', pady=(0, 5))
+
+        # Conteneur pour console + scrollbar
+        console_container = tk.Frame(console_frame, bg=self.COLORS['card_bg'])
+        console_container.pack(fill=tk.BOTH, expand=True)
+
+        # Scrollbar
+        console_scrollbar = tk.Scrollbar(console_container)
+        console_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Widget Text pour la console
+        self.console_text = tk.Text(
+            console_container,
+            height=10,
+            width=80,
+            bg=self.COLORS['card_bg'],
+            fg=self.COLORS['text'],
+            font=('Consolas', 9),
+            wrap=tk.WORD,
+            yscrollcommand=console_scrollbar.set,
+            state=tk.DISABLED
+        )
+        self.console_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        console_scrollbar.config(command=self.console_text.yview)
+
         # Pied de page avec chemin de config
         config_path = "config/voice_config.json"
         footer = tk.Label(
@@ -1022,7 +1074,7 @@ class ModernGamepadUI:
             bg=self.COLORS['bg'],
             fg=self.COLORS['text_dim']
         )
-        footer.pack(side=tk.BOTTOM, pady=(0, 15))
+        footer.pack(side=tk.BOTTOM, pady=(0, 10))
 
     def _create_button_card(self, parent: tk.Frame, btn_id: int, btn_info: dict, row: int, col: int):
         """Crée une carte pour un bouton"""
@@ -1510,6 +1562,10 @@ class ModernGamepadUI:
 
     def cleanup(self):
         """Nettoie les ressources"""
+        # Restaurer stdout/stderr
+        sys.stdout = self._original_stdout
+        sys.stderr = self._original_stderr
+
         self.running = False
         if self.joystick:
             self.joystick.quit()
