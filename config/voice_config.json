@@ -6,6 +6,12 @@
     "auto_paste": true,
     "feedback": true
   },
+  "ollama": {
+    "url": "http://localhost:11434",
+    "model": "gemma3:4b",
+    "temperature": 0.8,
+    "max_tokens": 150
+  },
   "audio": {
     "sample_rate": 16000,
     "channels": 1,
@@ -61,6 +67,11 @@
         "search_interval": 0.3
       },
       "description": "Toggle recherche/clic continu yes.png (appuyer pour démarrer/arrêter)"
+    },
+    "12": {
+      "action": "ai_voice_assistant",
+      "params": null,
+      "description": "Assistant vocal IA - Poser une question à Gemma3 avec réponse vocale (maintenir)"
     }
   }
 }

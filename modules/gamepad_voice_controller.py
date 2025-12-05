@@ -13,6 +13,9 @@ from modules.gamepad_controller import GamepadController, GamepadConfig, Gamepad
 from modules.copier_coller import VoiceCopyPaste, VoiceConfig
 from outils.speech_recognizer import RecognitionEngine
 from outils.auto_clicker import AutoClicker
+from outils.ollama_client import OllamaClient
+from outils.text_to_speech import TextToSpeech
+from config import OllamaConfig
 from typing import Optional
 import time
 import threading
@@ -59,6 +62,9 @@ class GamepadVoiceController(GamepadController):
         # État du bouton 10 (commandes vocales spéciales)
         self.button_10_pressed = False
 
+        # État du bouton 12 (assistant vocal IA)
+        self.button_12_pressed = False
+
         # État du bouton 0 (maintien du clic gauche)
         self.button_0_holding = False
 
@@ -77,6 +83,26 @@ class GamepadVoiceController(GamepadController):
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "assets", "images", "yes.png"
         )
+
+        # Initialiser le client Ollama et le TTS
+        try:
+            self.ollama_client = OllamaClient(
+                base_url=OllamaConfig.URL,
+                model=OllamaConfig.MODEL,
+                temperature=OllamaConfig.TEMPERATURE,
+                max_tokens=OllamaConfig.MAX_TOKENS
+            )
+            print(f"[INIT] ✅ Client Ollama initialisé (modèle: {OllamaConfig.MODEL})")
+        except Exception as e:
+            print(f"[INIT] ⚠️  Erreur initialisation Ollama : {e}")
+            self.ollama_client = None
+
+        try:
+            self.tts = TextToSpeech(language="fr", rate=180, volume=1.0)
+            print("[INIT] ✅ Module TTS initialisé")
+        except Exception as e:
+            print(f"[INIT] ⚠️  Erreur initialisation TTS : {e}")
+            self.tts = None
 
     def _click_yes_image_continuous(self):
         """
@@ -322,6 +348,61 @@ class GamepadVoiceController(GamepadController):
                 else:
                     print("[BOUTON 13] ❌ Aucun texte reconnu\n")
 
+        # Bouton 12 : Assistant vocal IA (Ollama + TTS)
+        elif button_id == 12:
+            if pressed and not self.button_12_pressed:
+                # Bouton pressé : démarrer l'enregistrement vocal
+                self.button_12_pressed = True
+                print("\n[BOUTON 12 - IA] 🎤 Enregistrement de votre question...")
+                print("[BOUTON 12 - IA] 💡 Posez votre question à l'IA")
+                self.voice_paste.start_voice_input()
+
+            elif not pressed and self.button_12_pressed:
+                # Bouton relâché : arrêter l'enregistrement et interroger l'IA
+                self.button_12_pressed = False
+                print("[BOUTON 12 - IA] ⏹️  Arrêt de l'enregistrement...")
+
+                # Arrêter l'enregistrement et récupérer le texte reconnu
+                original_auto_paste = self.voice_paste.config.auto_paste
+                self.voice_paste.config.auto_paste = False
+
+                question = self.voice_paste.stop_voice_input()
+
+                # Restaurer auto_paste
+                self.voice_paste.config.auto_paste = original_auto_paste
+
+                if question:
+                    print(f"[BOUTON 12 - IA] ✅ Question : {question}")
+
+                    # Vérifier que les modules sont disponibles
+                    if not self.ollama_client:
+                        print("[BOUTON 12 - IA] ❌ Client Ollama non disponible")
+                        if self.tts:
+                            self.tts.speak("Désolé, le client Ollama n'est pas disponible.")
+                        return
+
+                    if not self.tts:
+                        print("[BOUTON 12 - IA] ❌ Module TTS non disponible")
+                        return
+
+                    # Interroger l'IA
+                    print("[BOUTON 12 - IA] 🤖 Traitement par l'IA...")
+                    answer = self.ollama_client.ask(
+                        question,
+                        system_prompt="Tu es un assistant vocal français ultra-concis. Réponds en 1-2 phrases maximum, 30 mots maximum. Sois direct et précis."
+                    )
+
+                    if answer:
+                        print(f"[BOUTON 12 - IA] ✅ Réponse : {answer}")
+                        print("[BOUTON 12 - IA] 🔊 Lecture de la réponse...")
+                        self.tts.speak(answer)
+                        print("[BOUTON 12 - IA] ✅ Terminé\n")
+                    else:
+                        print("[BOUTON 12 - IA] ❌ Aucune réponse reçue")
+                        self.tts.speak("Désolé, je n'ai pas pu obtenir de réponse.")
+                else:
+                    print("[BOUTON 12 - IA] ❌ Aucune question reconnue\n")
+
         # Bouton 9 (R3) : Toggle recherche continue de yes.png
         elif button_id == 9:
             # Détecter uniquement l'appui (pas le relâchement)
@@ -449,6 +530,10 @@ class GamepadVoiceController(GamepadController):
         if self.win_key_held:
             pyautogui.keyUp('win')
             self.win_key_held = False
+
+        # Nettoyer le TTS
+        if self.tts:
+            self.tts.cleanup()
 
         self.voice_paste.cleanup()
         super().disconnect()

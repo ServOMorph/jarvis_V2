@@ -92,6 +92,27 @@ class ImageSearchConfig:
 
 
 # ============================================================================
+# CONFIGURATION OLLAMA (IA)
+# ============================================================================
+
+class OllamaConfig:
+    """Configuration de l'assistant vocal IA"""
+
+    # URL de l'API Ollama
+    URL = "http://localhost:11434"
+
+    # Modèle à utiliser
+    MODEL = "phi3:mini"
+
+    # Température de génération (0.0-1.0)
+    # Plus élevé = plus créatif, plus bas = plus déterministe
+    TEMPERATURE = 0.8
+
+    # Nombre maximum de tokens dans la réponse
+    MAX_TOKENS = 150
+
+
+# ============================================================================
 # CONSEILS D'OPTIMISATION
 # ============================================================================
 

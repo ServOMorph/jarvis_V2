@@ -24,6 +24,7 @@ class VoiceConfig:
     max_duration: float = 10.0  # Durée max d'enregistrement en secondes
     auto_paste: bool = True  # Coller automatiquement après reconnaissance
     feedback: bool = True  # Afficher les messages de feedback
+    ollama_config: dict = None  # Configuration Ollama pour l'IA
 
 
 class VoiceCopyPaste:

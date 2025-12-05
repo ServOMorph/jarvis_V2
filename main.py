@@ -67,12 +67,16 @@ def create_voice_config(config_data: dict = None) -> VoiceConfig:
     elif engine_name == 'sphinx':
         engine = RecognitionEngine.SPHINX
 
+    # Charger la configuration Ollama si disponible
+    ollama_config = config_data.get('ollama', None) if config_data else None
+
     return VoiceConfig(
         language=voice_cfg.get('language', 'fr-FR'),
         engine=engine,
         max_duration=voice_cfg.get('max_duration', 10.0),
         auto_paste=voice_cfg.get('auto_paste', True),
-        feedback=voice_cfg.get('feedback', True)
+        feedback=voice_cfg.get('feedback', True),
+        ollama_config=ollama_config
     )
 
 
