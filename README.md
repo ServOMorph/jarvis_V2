@@ -2,6 +2,13 @@
 
 Contrôlez votre PC avec une manette de jeu et la reconnaissance vocale !
 
+## 🚀 Lancement rapide
+
+```bash
+pip install -r requirements.txt
+python main.py
+```
+
 ## 📋 Fonctionnalités
 
 - **Contrôle de la souris** avec les joysticks
