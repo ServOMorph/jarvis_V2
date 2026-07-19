@@ -102,7 +102,7 @@ class OllamaConfig:
     URL = "http://localhost:11434"
 
     # Modèle à utiliser
-    MODEL = "phi3:mini"
+    MODEL = "gemma3:4b"
 
     # Température de génération (0.0-1.0)
     # Plus élevé = plus créatif, plus bas = plus déterministe
@@ -110,6 +110,9 @@ class OllamaConfig:
 
     # Nombre maximum de tokens dans la réponse
     MAX_TOKENS = 150
+
+    # Timeout pour les requêtes (en secondes)
+    TIMEOUT = 60
 
 
 # ============================================================================

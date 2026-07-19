@@ -36,8 +36,6 @@ class GamepadVoiceController(GamepadController):
         # Initialiser le contrôleur de manette de base
         super().__init__(gamepad_config)
 
-        # Debug: vérifier les button_mappings
-        print(f"[DEBUG INIT] button_mappings = {list(self.config.button_mappings.keys()) if self.config.button_mappings else 'None'}")
 
         # Initialiser le système de dictée vocale
         self.voice_paste = VoiceCopyPaste(voice_config or VoiceConfig())
@@ -90,9 +88,10 @@ class GamepadVoiceController(GamepadController):
                 base_url=OllamaConfig.URL,
                 model=OllamaConfig.MODEL,
                 temperature=OllamaConfig.TEMPERATURE,
-                max_tokens=OllamaConfig.MAX_TOKENS
+                max_tokens=OllamaConfig.MAX_TOKENS,
+                timeout=OllamaConfig.TIMEOUT
             )
-            print(f"[INIT] ✅ Client Ollama initialisé (modèle: {OllamaConfig.MODEL})")
+            print(f"[INIT] ✅ Client Ollama initialisé (modèle: {OllamaConfig.MODEL}, timeout: {OllamaConfig.TIMEOUT}s)")
         except Exception as e:
             print(f"[INIT] ⚠️  Erreur initialisation Ollama : {e}")
             self.ollama_client = None
@@ -211,10 +210,6 @@ class GamepadVoiceController(GamepadController):
             button_id: ID du bouton
             pressed: True si pressé, False si relâché
         """
-        # Debug: afficher quel bouton est pressé
-        if pressed:
-            print(f"[DEBUG] Bouton {button_id} pressé")
-
         # Gérer l'état des boutons pour les combinaisons
         if button_id == 0:
             self.button_0_pressed_state = pressed
@@ -472,7 +467,6 @@ class GamepadVoiceController(GamepadController):
 
         else:
             # Laisser le contrôleur de base gérer les autres boutons
-            print(f"[DEBUG] Délégation du bouton {button_id} à super().handle_button()")
             super().handle_button(button_id, pressed)
 
     def handle_hat(self, hat_id: int, value: tuple):
@@ -488,9 +482,6 @@ class GamepadVoiceController(GamepadController):
             return
 
         x, y = value
-
-        # Debug
-        print(f"[DEBUG DPAD] hat_id={hat_id}, value={value}, button_4_state={self.button_4_pressed_state}")
 
         # Si bouton 4 pressé : flèches directionnelles avec Win maintenu
         if self.button_4_pressed_state:

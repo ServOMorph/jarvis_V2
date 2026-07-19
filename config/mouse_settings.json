@@ -1,10 +1,15 @@
 {
   "mouse": {
-    "sensitivity": 20.0,
-    "max_sensitivity": 60.0,
-    "acceleration_curve": 2.0,
+    "sensitivity": 8.0,
+    "max_sensitivity": 21.0,
+    "acceleration_curve": 2.4,
     "smoothing": 0.3,
-    "precision_divider": 3.0,
+    "precision_divider": 7.5,
     "deadzone": 0.15
+  },
+  "scroll": {
+    "sensitivity": 310.0,
+    "acceleration_curve": 3.0,
+    "deadzone": 0.1
   }
 }

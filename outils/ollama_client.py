@@ -16,7 +16,8 @@ class OllamaClient:
         base_url: str = "http://localhost:11434",
         model: str = "gemma3:4b",
         temperature: float = 0.7,
-        max_tokens: int = 500
+        max_tokens: int = 500,
+        timeout: int = 60
     ):
         """
         Initialise le client Ollama
@@ -26,12 +27,13 @@ class OllamaClient:
             model: Nom du modèle à utiliser (ex: gemma3:4b)
             temperature: Température pour la génération (0-1)
             max_tokens: Nombre maximum de tokens dans la réponse
+            timeout: Timeout pour les requêtes en secondes
         """
         self.base_url = base_url.rstrip('/')
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self.timeout = 30
+        self.timeout = timeout
 
     def ask(self, question: str, system_prompt: Optional[str] = None) -> Optional[str]:
         """

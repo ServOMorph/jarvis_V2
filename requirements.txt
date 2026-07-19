@@ -23,5 +23,8 @@ pillow>=10.0.0
 screeninfo>=0.8.1
 mss>=9.0.1
 
+# Serveur de developpement avec hot reload
+watchdog>=3.0.0
+
 # Optionnel : Whisper pour meilleure reconnaissance (plus lourd)
 # openai-whisper>=20230918

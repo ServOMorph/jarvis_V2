@@ -139,23 +139,13 @@ class GamepadController:
         if not self.gamepad_enabled:
             return
 
-        print(f"[DEBUG PARENT] handle_button appelé: bouton={button_id}, pressed={pressed}, in_states={button_id in self.button_states}")
         if self.config.button_mappings and button_id in self.config.button_mappings:
-            print(f"[DEBUG PARENT] Bouton {button_id} trouvé dans button_mappings")
             action = self.config.button_mappings[button_id]
             if pressed and button_id not in self.button_states:
-                # Bouton pressé pour la première fois
-                print(f"[DEBUG PARENT] Exécution de l'action pour le bouton {button_id}")
                 action()
                 self.button_states[button_id] = True
             elif not pressed and button_id in self.button_states:
-                # Bouton relâché
-                print(f"[DEBUG PARENT] Bouton {button_id} relâché, nettoyage de l'état")
                 del self.button_states[button_id]
-            else:
-                print(f"[DEBUG PARENT] Condition non remplie: pressed={pressed}, in_states={button_id in self.button_states}")
-        else:
-            print(f"[DEBUG PARENT] Bouton {button_id} NON trouvé dans button_mappings ou pas de mappings")
 
     def handle_axis(self, axis_id: int, value: float):
         """
@@ -269,7 +259,7 @@ class GamepadController:
                         action = self.config.axis_mappings[axis_id]
                         action(value)
 
-                time.sleep(0.01)  # Petit délai pour ne pas surcharger le CPU
+                time.sleep(0.001)  # Délai minimal pour réactivité maximale
 
         except KeyboardInterrupt:
             print("\nArrêt du contrôleur...")
