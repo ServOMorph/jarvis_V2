@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS V2 - Controles Manette</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">CONTROLES MANETTE</h1>
+            <p class="subtitle">Interface de controle gamepad</p>
+        </header>
+
+        <div class="status-card">
+            <div class="status-indicator">
+                <span class="led" id="statusLed"></span>
+                <span class="status-text" id="statusText">MANETTE INACTIVE</span>
+            </div>
+            <div class="connection-status">
+                <span class="led led-small" id="wsLed"></span>
+                <span class="ws-status" id="wsStatus">WebSocket deconnecte</span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="image-section">
+                <img src="../assets/images/manette.png" alt="Schema manette" class="gamepad-image" id="gamepadImage">
+            </div>
+
+            <div class="buttons-grid">
+                <div class="button-item" data-button="0">
+                    <span class="led led-small" id="led-0"></span>
+                    <span class="button-label">A - Clic gauche</span>
+                </div>
+                <div class="button-item" data-button="1">
+                    <span class="led led-small" id="led-1"></span>
+                    <span class="button-label">B - Entree</span>
+                </div>
+                <div class="button-item" data-button="2">
+                    <span class="led led-small" id="led-2"></span>
+                    <span class="button-label">Y - Clic droit</span>
+                </div>
+                <div class="button-item" data-button="3">
+                    <span class="led led-small" id="led-3"></span>
+                    <span class="button-label">X - Dictee vocale</span>
+                </div>
+                <div class="button-item" data-button="6">
+                    <span class="led led-small" id="led-6"></span>
+                    <span class="button-label">Back - Bureau gauche</span>
+                </div>
+                <div class="button-item" data-button="7">
+                    <span class="led led-small" id="led-7"></span>
+                    <span class="button-label">Start - Bureau droite</span>
+                </div>
+                <div class="button-item" data-button="8">
+                    <span class="led led-small" id="led-8"></span>
+                    <span class="button-label">L3 - Echap</span>
+                </div>
+                <div class="button-item" data-button="9">
+                    <span class="led led-small" id="led-9"></span>
+                    <span class="button-label">R3 - Clic auto yes</span>
+                </div>
+                <div class="button-item" data-button="12">
+                    <span class="led led-small" id="led-12"></span>
+                    <span class="button-label">LB - Assistant IA</span>
+                </div>
+            </div>
+
+            <div class="controls-section">
+                <button class="btn btn-primary" id="toggleGamepad">
+                    <span id="toggleIcon">&#10060;</span>
+                    <span id="toggleText">Manette DESACTIVEE</span>
+                </button>
+                <button class="btn btn-secondary" id="openConfig">
+                    <span>&#9881;</span>
+                    Configuration Souris
+                </button>
+            </div>
+        </div>
+
+        <div class="console-section">
+            <div class="console-header">
+                <span>&#128203;</span> Console
+            </div>
+            <div class="console" id="console"></div>
+        </div>
+
+        <footer class="footer">
+            <span>Configuration: config/mouse_settings.json</span>
+            <span>JARVIS V2 - Production</span>
+        </footer>
+    </div>
+
+    <div class="modal" id="configModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configuration Souris</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="config-section">
+                    <h3>Souris</h3>
+                    <div class="slider-group">
+                        <label>Sensibilite de base</label>
+                        <input type="range" min="5" max="100" step="0.5" id="sensitivity" class="slider">
+                        <span class="slider-value" id="sensitivityValue">8.0</span>
+                    </div>
+                    <div class="slider-group">
+                        <label>Sensibilite maximale</label>
+                        <input type="range" min="10" max="150" step="0.5" id="maxSensitivity" class="slider">
+                        <span class="slider-value" id="maxSensitivityValue">21.0</span>
+                    </div>
+                    <div class="slider-group">
+                        <label>Acceleration</label>
+                        <input type="range" min="1" max="4" step="0.1" id="acceleration" class="slider">
+                        <span class="slider-value" id="accelerationValue">2.4</span>
+                    </div>
+                    <div class="slider-group">
+                        <label>Lissage</label>
+                        <input type="range" min="0" max="0.9" step="0.05" id="smoothing" class="slider">
+                        <span class="slider-value" id="smoothingValue">0.3</span>
+                    </div>
+                    <div class="slider-group">
+                        <label>Mode Boost</label>
+                        <input type="range" min="1.5" max="10" step="0.5" id="precisionDivider" class="slider">
+                        <span class="slider-value" id="precisionDividerValue">7.5</span>
+                    </div>
+                    <div class="slider-group">
+                        <label>Zone morte</label>
+                        <input type="range" min="0" max="0.4" step="0.01" id="deadzone" class="slider">
+                        <span class="slider-value" id="deadzoneValue">0.15</span>
+                    </div>
+                </div>
+                <div class="config-section">
+                    <h3>Scroll</h3>
+                    <div class="slider-group">
+                        <label>Sensibilite scroll</label>
+                        <input type="range" min="10" max="6000" step="10" id="scrollSensitivity" class="slider">
+                        <span class="slider-value" id="scrollSensitivityValue">310.0</span>
+                    </div>
+                    <div class="slider-group">
+                        <label>Acceleration scroll</label>
+                        <input type="range" min="1" max="3" step="0.1" id="scrollAcceleration" class="slider">
+                        <span class="slider-value" id="scrollAccelerationValue">3.0</span>
+                    </div>
+                    <div class="slider-group">
+                        <label>Zone morte scroll</label>
+                        <input type="range" min="0" max="0.3" step="0.01" id="scrollDeadzone" class="slider">
+                        <span class="slider-value" id="scrollDeadzoneValue">0.1</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-reset" id="resetConfig">&#128260; Reinitialiser</button>
+                <button class="btn btn-apply" id="applyConfig">&#10003; Appliquer</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
