@@ -1,0 +1,41 @@
+# JARVIS V2
+
+Outil modulaire de contrôle PC par manette de jeu et dictée vocale assistée par IA locale (Ollama). Développé pour l'accessibilité numérique et l'automatisation sans mains.
+
+## Informations clés
+- **Stack principale** : Python 3.11+, Pygame (gamepad), PyAudio/SpeechRecognition (audio & voix), PyAutoGUI/OpenCV/Pillow/MSS (mouse & image search on screen), HTML5/CSS/JavaScript (Web interface).
+- **Dépendances** : pygame, SpeechRecognition, PyAudio, pyperclip, pyautogui, opencv-python, pillow, screeninfo, mss, watchdog.
+- **Licence** : MIT (Copyright 2026 ServOMorph).
+- **Principes de conception** :
+  - **Accessibilité** : Permettre le contrôle complet du système d'exploitation via une manette Xbox/PlayStation et des commandes vocales.
+  - **Souveraineté & Local-First** : Option de reconnaissance vocale locale offline (Whisper, Sphinx) et intégration IA locale via Ollama sans dépendance cloud obligatoire.
+  - **Modularité** : Séparation stricte entre les outils bas niveau (enregistrement, souris, OCR d'images) et les modules de contrôle.
+
+## Architecture et Points d'entrée
+Le projet s'organise autour des fichiers et répertoires suivants :
+
+- **Points d'entrée principaux** :
+  - `main.py` / `run.py` : Lanceur principal de l'application (contrôle manette + vocale en tâche de fond).
+  - `run_ui_html.py` : Lanceur de l'interface graphique locale (démarre un serveur WebSocket et ouvre `web/index.html`).
+  - `dev_server.py` : Serveur de développement avec Hot Reload (redémarre le projet à chaque modification de fichier `.py` ou `.json`).
+
+- **outils/** (Utilitaires système) :
+  - `audio_recorder.py` : Enregistrement de flux audio depuis le microphone.
+  - `speech_recognizer.py` : Traduction parole-texte via différents moteurs (Google, Whisper, Sphinx).
+  - `clipboard_manager.py` : Manipulation du presse-papier et simulation de collage (`Ctrl+V`).
+  - `mouse_controller.py` : Contrôle logiciel de la souris (déplacement avec lissage et accélération, clics).
+  - `image_finder.py` : Recherche d'une image de référence (ex: `yes.png`) sur l'écran en gérant le multi-moniteur (`screeninfo`, `mss`).
+  - `auto_clicker.py` : Détection active et clic automatique sur des patterns d'image.
+  - `ollama_client.py` : Client HTTP local léger pour communiquer avec le serveur d'IA locale Ollama.
+
+- **modules/** (Logique métier) :
+  - `gamepad_controller.py` : Écoute et traduction des entrées manette (axes, boutons, D-pad) via Pygame.
+  - `gamepad_voice_controller.py` : Contrôleur étendu fusionnant le gamepad, la dictée vocale et les requêtes IA Ollama.
+  - `copier_coller.py` : Module de dictée vocale standalone.
+
+- **ui/** :
+  - `gamepad_controls_ui.py` : Fenêtre de configuration Tkinter pour ajuster la sensibilité de la souris et calibrer les zones mortes.
+
+- **config/** :
+  - `voice_config.json` : Mappings de boutons (actions, paramètres, descriptions) et configuration vocale (moteur, langue).
+  - `mouse_settings.json` : Réglages souris persistants (sensibilité, accélération, lissage, diviseur de précision).
